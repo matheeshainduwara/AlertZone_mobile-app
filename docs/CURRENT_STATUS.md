@@ -10,9 +10,9 @@
 
 | Phase | Status | Notes |
 |---|---|---|
-| Phase 0: Architecture Cleanup | 🔴 Not Started | Current priority |
-| Phase 1: Core Firebase Integration | 🟡 Partially Done | Auth works; Firestore used only for user profiles |
-| Phase 2: Report System | 🔴 Not Started | UI exists but uses mock data |
+| Phase 0: Architecture Cleanup | 🔴 Not Started | Planned next |
+| Phase 1: Core Firebase Integration | 🟡 In Progress | Auth ✅, Report submit ✅, Map live ✅, History live ✅ |
+| Phase 2: Report System | 🟡 In Progress | Submit + track working; image upload pending |
 | Phase 3: Community Features | 🔴 Not Started | Upvoting UI exists but not functional |
 | Phase 4: Notifications | 🔴 Not Started | — |
 | Phase 5: Badge System | 🔴 Not Started | Static badges shown in profile |
@@ -65,33 +65,37 @@
 - [ ] Latest Updates — hardcoded `LATEST_UPDATES` array
 - [ ] Notification bell badge — hardcoded "10"
 
-### Map Screen (`map.tsx`)
-- [ ] Issue pins — hardcoded `MOCK_PINS` array
-- [ ] Filter chips — filter locally on mock data, not Firestore
-- [ ] Pin popup "reported by X users" — hardcoded
-- [ ] "Details" button — not wired to navigation
+### Map Screen (`map.tsx`) ✅ LIVE
+- [x] Issue pins — live Firestore subscription (`onSnapshot`) ✅
+- [x] Filter chips by category — filters Firestore data in real-time ✅
+- [x] Search bar — filters by title or address ✅
+- [x] Pin popup — shows status badge, category, address, upvote count ✅
 - [x] Google Maps renders with dark theme ✅
 - [x] User location permission + centering ✅
-- [x] Zoom in/out controls ✅
+- [x] Zoom in/out + recenter controls ✅
+- [ ] "Details" full-screen navigation — not yet implemented
 
-### Report Screen (`report.tsx`)
-- [ ] Location — hardcoded address, no `expo-location` integration
-- [ ] Map in report form — placeholder, not MapView
-- [ ] Photo/Video evidence — buttons exist but `expo-image-picker` not wired
-- [ ] Submit — simulates delay with `setTimeout`, no Firestore write
-- [ ] Reference ID — randomly generated, not from Firestore doc ID
+### Report Screen (`report.tsx`) ✅ LIVE
+- [x] GPS location — real `expo-location` with permission request ✅
+- [x] Interactive MapView with **draggable marker** ✅
+- [x] Recenter to GPS button on map ✅
+- [x] Reverse geocoding — address from coordinates ✅
+- [x] Submit saves real Firestore document ✅
+- [x] Reference ID — real Firestore document ID ✅
+- [x] Contribution points +10 on submit ✅
 - [x] Category selection modal ✅
 - [x] Description input with character count ✅
-- [x] Success screen layout ✅
+- [x] Success screen with real ref ID ✅
+- [ ] Photo/Video evidence — `expo-image-picker` not yet wired
 
-### History Screen (`history.tsx`)
-- [ ] Report list — hardcoded `MOCK_REPORTS` array
-- [ ] Filters (All/Pending/Fixing/Resolved/Rejected) — filter mock data only
-- [ ] Report detail modal — displays mock data
-- [ ] Upvote button — not functional
-- [x] Report card layout ✅
-- [x] Status timeline in detail modal ✅
-- [x] Filter tab UI ✅
+### History Screen (`history.tsx`) ✅ LIVE
+- [x] Report list — live Firestore subscription for current user ✅
+- [x] Filters (All/Pending/Fixing/Resolved/Rejected) — filter real data ✅
+- [x] Report detail modal — shows real Firestore data ✅
+- [x] Status timeline with ASSIGNED stage ✅
+- [x] Real-time updates — modal reflects status changes instantly ✅
+- [x] Human-readable date formatting ✅
+- [ ] Upvote button — UI present but not functional yet
 
 ### Profile Screen (`profile.tsx`)
 - [ ] Badges — hardcoded `BADGES` array, not computed from user activity

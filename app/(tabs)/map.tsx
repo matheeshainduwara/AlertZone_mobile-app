@@ -1,32 +1,53 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
   Pressable,
-  TextInput,
   ScrollView,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+  orderBy,
+} from 'firebase/firestore';
 
-// ── Mock issue pins ──
-// TODO: Replace with Firestore snapshot
-// const q = query(collection(db, 'reports'), where('status', '!=', 'RESOLVED'));
-// const unsub = onSnapshot(q, snap => setPins(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-const MOCK_PINS = [
-  { id: '1', title: 'Heavy Traffic',      subtitle: 'Market St',   lat: 6.8900, lng: 79.8900, type: 'traffic',  color: '#E05C5C', icon: 'car'     },
-  { id: '2', title: 'Broken Streetlight', subtitle: 'Nawala Road', lat: 6.8850, lng: 79.9000, type: 'lighting', color: '#F59E0B', icon: 'bulb'    },
-  { id: '3', title: 'Pothole',            subtitle: 'Park Avenue', lat: 6.8950, lng: 79.8950, type: 'road',     color: '#4CC2D1', icon: 'warning' },
-  { id: '4', title: 'Blocked Drain',      subtitle: 'High Street', lat: 6.8800, lng: 79.8850, type: 'water',    color: '#60A5FA', icon: 'water'   },
-];
+import { db } from '../../services/firebase';
 
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+interface ReportPin {
+  id: string;
+  title: string;
+  categoryId: string;
+  categoryIcon: string;
+  categoryColor: string;
+  latitude: number;
+  longitude: number;
+  status: string;
+  description: string;
+  address: string;
+  upvoteCount: number;
+  createdAt: any;
+}
+
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
 const FILTER_CHIPS = [
-  { id: 'all',     label: 'All Alerts', icon: 'warning-outline',     color: '#F59E0B' },
-  { id: 'roads',   label: 'Roads',      icon: 'car-outline',          color: '#E05C5C' },
-  { id: 'water',   label: 'Water',      icon: 'water-outline',        color: '#60A5FA' },
-  { id: 'weather', label: 'Weather',    icon: 'partly-sunny-outline', color: '#34D399' },
+  { id: 'all',               label: 'All',       icon: 'warning-outline',       color: '#F59E0B' },
+  { id: 'road_traffic',      label: 'Roads',     icon: 'car-outline',           color: '#4CC2D1' },
+  { id: 'water_drainage',    label: 'Water',     icon: 'water-outline',         color: '#60A5FA' },
+  { id: 'waste_environment', label: 'Waste',     icon: 'trash-outline',         color: '#34D399' },
+  { id: 'social_safety',     label: 'Safety',    icon: 'shield-outline',        color: '#A78BFA' },
+  { id: 'bridge_structural', label: 'Structural',icon: 'git-network-outline',   color: '#F59E0B' },
 ];
 
 const DEFAULT_REGION = {
@@ -37,35 +58,81 @@ const DEFAULT_REGION = {
 };
 
 const DARK_MAP_STYLE = [
-  { elementType: 'geometry',                                stylers: [{ color: '#0d1f2d' }] },
-  { elementType: 'labels.text.fill',                        stylers: [{ color: '#4CC2D1' }] },
-  { elementType: 'labels.text.stroke',                      stylers: [{ color: '#0a1820' }] },
-  { featureType: 'road',        elementType: 'geometry',    stylers: [{ color: '#1E3A44' }] },
+  { elementType: 'geometry',                                 stylers: [{ color: '#0d1f2d' }] },
+  { elementType: 'labels.text.fill',                         stylers: [{ color: '#4CC2D1' }] },
+  { elementType: 'labels.text.stroke',                       stylers: [{ color: '#0a1820' }] },
+  { featureType: 'road',        elementType: 'geometry',     stylers: [{ color: '#1E3A44' }] },
   { featureType: 'road',        elementType: 'geometry.stroke', stylers: [{ color: '#071318' }] },
-  { featureType: 'water',       elementType: 'geometry',    stylers: [{ color: '#071318' }] },
-  { featureType: 'poi',         elementType: 'geometry',    stylers: [{ color: '#0a1820' }] },
-  { featureType: 'transit',     elementType: 'geometry',    stylers: [{ color: '#1E3A44' }] },
-  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#1E3A44' }] },
+  { featureType: 'water',       elementType: 'geometry',     stylers: [{ color: '#071318' }] },
+  { featureType: 'poi',         elementType: 'geometry',     stylers: [{ color: '#0a1820' }] },
+  { featureType: 'transit',     elementType: 'geometry',     stylers: [{ color: '#1E3A44' }] },
+  { featureType: 'administrative', elementType: 'geometry',  stylers: [{ color: '#1E3A44' }] },
 ];
 
+const STATUS_COLOR: Record<string, string> = {
+  PENDING:  '#F59E0B',
+  ASSIGNED: '#60A5FA',
+  FIXING:   '#4CC2D1',
+  RESOLVED: '#30A89C',
+  REJECTED: '#E05C5C',
+};
+
+// ─────────────────────────────────────────────
+// Map Screen
+// ─────────────────────────────────────────────
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
 
-  const [activeFilter, setActiveFilter]       = useState('all');
-  const [selectedPin, setSelectedPin]         = useState<typeof MOCK_PINS[0] | null>(null);
-  const [searchText, setSearchText]           = useState('');
-  const [region, setRegion]                   = useState(DEFAULT_REGION);
+  const [reports, setReports]               = useState<ReportPin[]>([]);
+  const [activeFilter, setActiveFilter]     = useState('all');
+  const [selectedPin, setSelectedPin]       = useState<ReportPin | null>(null);
+  const [searchText, setSearchText]         = useState('');
+  const [region, setRegion]                 = useState(DEFAULT_REGION);
   const [locationGranted, setLocationGranted] = useState(false);
 
-  // ── Request location permission + center on user ──
+  // ── Subscribe to Firestore reports (non-archived, non-resolved) ──
+  useEffect(() => {
+    const q = query(
+      collection(db, 'reports'),
+      where('isArchived', '==', false),
+      orderBy('createdAt', 'desc'),
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+      const pins: ReportPin[] = snap.docs
+        .map((d) => {
+          const data = d.data();
+          if (!data.location?.latitude || !data.location?.longitude) return null;
+          return {
+            id: d.id,
+            title: data.title ?? data.category ?? 'Report',
+            categoryId: data.categoryId ?? 'road_traffic',
+            categoryIcon: data.categoryIcon ?? 'warning-outline',
+            categoryColor: data.categoryColor ?? '#4CC2D1',
+            latitude: data.location.latitude,
+            longitude: data.location.longitude,
+            status: data.status ?? 'PENDING',
+            description: data.description ?? '',
+            address: data.location.address ?? '',
+            upvoteCount: data.upvoteCount ?? 0,
+            createdAt: data.createdAt,
+          } as ReportPin;
+        })
+        .filter(Boolean) as ReportPin[];
+      setReports(pins);
+    }, (err) => {
+      console.error('❌ Map Firestore error:', err);
+    });
+
+    return unsub;
+  }, []);
+
+  // ── Request location permission ──
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.warn('Location permission denied — using default region');
-        return;
-      }
+      if (status !== 'granted') return;
       setLocationGranted(true);
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       const userRegion = {
@@ -94,21 +161,23 @@ export default function MapScreen() {
   const goToMyLocation = async () => {
     if (!locationGranted) return;
     const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    const userRegion = {
+    const r = {
       latitude: loc.coords.latitude,
       longitude: loc.coords.longitude,
       latitudeDelta: 0.02,
       longitudeDelta: 0.02,
     };
-    setRegion(userRegion);
-    mapRef.current?.animateToRegion(userRegion, 800);
+    setRegion(r);
+    mapRef.current?.animateToRegion(r, 800);
   };
 
-  const filteredPins = MOCK_PINS.filter((pin) => {
-    if (activeFilter === 'all')   return true;
-    if (activeFilter === 'roads') return pin.type === 'road' || pin.type === 'traffic';
-    if (activeFilter === 'water') return pin.type === 'water';
-    return true;
+  // ── Filter pins by category + search ──
+  const filteredPins = reports.filter((pin) => {
+    const matchesCategory = activeFilter === 'all' || pin.categoryId === activeFilter;
+    const matchesSearch = searchText.trim() === '' ||
+      pin.title.toLowerCase().includes(searchText.toLowerCase()) ||
+      pin.address.toLowerCase().includes(searchText.toLowerCase());
+    return matchesCategory && matchesSearch;
   });
 
   return (
@@ -128,25 +197,26 @@ export default function MapScreen() {
         {filteredPins.map((pin) => (
           <Marker
             key={pin.id}
-            coordinate={{ latitude: pin.lat, longitude: pin.lng }}
+            coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
             onPress={() => setSelectedPin(pin)}
           >
             <View style={{
-              backgroundColor: pin.color,
+              backgroundColor: pin.categoryColor,
               borderRadius: 20, padding: 6,
               borderWidth: 2, borderColor: 'white',
-              shadowColor: pin.color,
+              shadowColor: pin.categoryColor,
               shadowOffset: { width: 0, height: 2 },
               shadowOpacity: 0.5, shadowRadius: 4, elevation: 4,
             }}>
-              <Ionicons name={pin.icon as any} size={16} color="white" />
+              <Ionicons name={pin.categoryIcon as any} size={16} color="white" />
             </View>
           </Marker>
         ))}
       </MapView>
 
-      {/* ── Search + Filter chips overlay ── */}
+      {/* ── Search + Filter overlay ── */}
       <View style={{ position: 'absolute', top: insets.top + 8, left: 0, right: 0, paddingHorizontal: 16 }}>
+        {/* Search bar */}
         <View style={{
           flexDirection: 'row', alignItems: 'center',
           backgroundColor: '#111E27', borderRadius: 14,
@@ -157,19 +227,20 @@ export default function MapScreen() {
         }}>
           <Ionicons name="search-outline" size={18} color="#3A6070" />
           <TextInput
-            placeholder="Search location or alerts"
+            placeholder="Search location or issue…"
             placeholderTextColor="#3A6070"
             value={searchText}
             onChangeText={setSearchText}
             style={{ flex: 1, color: 'white', fontSize: 14, marginLeft: 10, padding: 0 }}
           />
-          <Pressable className="active:opacity-70">
-            <View style={{ backgroundColor: '#1E3347', borderRadius: 8, padding: 6 }}>
-              <Ionicons name="options-outline" size={16} color="#4CC2D1" />
-            </View>
-          </Pressable>
+          {searchText.length > 0 && (
+            <Pressable onPress={() => setSearchText('')}>
+              <Ionicons name="close-circle" size={18} color="#3A6070" />
+            </Pressable>
+          )}
         </View>
 
+        {/* Category filter chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {FILTER_CHIPS.map((chip) => {
@@ -177,7 +248,7 @@ export default function MapScreen() {
               return (
                 <Pressable
                   key={chip.id}
-                  onPress={() => setActiveFilter(chip.id)}
+                  onPress={() => { setActiveFilter(chip.id); setSelectedPin(null); }}
                   style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,
                     paddingHorizontal: 12, paddingVertical: 7,
@@ -197,8 +268,17 @@ export default function MapScreen() {
         </ScrollView>
       </View>
 
-      {/* ── Controls ── */}
-      <View style={{ position: 'absolute', right: 16, bottom: selectedPin ? 250 : 130 }}>
+      {/* Report count badge */}
+      {reports.length > 0 && (
+        <View style={{
+          position: 'absolute', top: insets.top + 8, right: 16,
+          backgroundColor: '#4CC2D1', borderRadius: 12, paddingHorizontal: 8, paddingVertical: 4,
+          display: 'none', // hidden — counts are visible in filter chips
+        }} />
+      )}
+
+      {/* ── Zoom + locate controls ── */}
+      <View style={{ position: 'absolute', right: 16, bottom: selectedPin ? 260 : 130 }}>
         <Pressable onPress={goToMyLocation} style={{
           width: 40, height: 40, backgroundColor: '#4CC2D1',
           borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 8,
@@ -221,44 +301,68 @@ export default function MapScreen() {
         </Pressable>
       </View>
 
-      {/* ── Pin popup ── */}
+      {/* ── Selected pin popup ── */}
       {selectedPin && (
         <View style={{
           position: 'absolute', bottom: 110, left: 16, right: 16,
           backgroundColor: '#111E27', borderRadius: 20, padding: 16,
           borderWidth: 1, borderColor: '#1E3347',
-          flexDirection: 'row', alignItems: 'center',
           shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
           shadowOpacity: 0.4, shadowRadius: 16, elevation: 12,
         }}>
-          <View style={{
-            width: 44, height: 44, borderRadius: 12,
-            backgroundColor: selectedPin.color + '22',
-            alignItems: 'center', justifyContent: 'center', marginRight: 12,
-          }}>
-            <Ionicons name={selectedPin.icon as any} size={22} color={selectedPin.color} />
+          {/* Status pill */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+            <View style={{
+              backgroundColor: (STATUS_COLOR[selectedPin.status] ?? '#F59E0B') + '22',
+              borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+              borderWidth: 1, borderColor: STATUS_COLOR[selectedPin.status] ?? '#F59E0B',
+            }}>
+              <Text style={{ color: STATUS_COLOR[selectedPin.status] ?? '#F59E0B', fontSize: 11, fontWeight: '700' }}>
+                {selectedPin.status}
+              </Text>
+            </View>
+            <Pressable onPress={() => setSelectedPin(null)}>
+              <Ionicons name="close" size={20} color="#3A6070" />
+            </Pressable>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }}>{selectedPin.title}</Text>
-            <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 2 }}>{selectedPin.subtitle}</Text>
-            <Text style={{ color: '#3A6070', fontSize: 11, marginTop: 2 }}>Reported 5 mins ago by 12 users</Text>
+
+          {/* Main content row */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{
+              width: 44, height: 44, borderRadius: 12,
+              backgroundColor: selectedPin.categoryColor + '22',
+              alignItems: 'center', justifyContent: 'center', marginRight: 12,
+            }}>
+              <Ionicons name={selectedPin.categoryIcon as any} size={22} color={selectedPin.categoryColor} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 14 }} numberOfLines={1}>
+                {selectedPin.title}
+              </Text>
+              <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 2 }} numberOfLines={1}>
+                {selectedPin.address}
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <Ionicons name="arrow-up-circle-outline" size={13} color="#4CC2D1" />
+                  <Text style={{ color: '#4CC2D1', fontSize: 11, fontWeight: '600' }}>
+                    {selectedPin.upvoteCount} upvotes
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-          <Pressable
-            style={{
-              backgroundColor: '#4CC2D1', paddingHorizontal: 14,
-              paddingVertical: 8, borderRadius: 10, marginLeft: 8,
-            }}
-            // TODO: router.push to report detail with selectedPin.id
-          >
-            <Text style={{ color: '#071318', fontWeight: '700', fontSize: 12 }}>DETAILS</Text>
-          </Pressable>
-          <Pressable onPress={() => setSelectedPin(null)} style={{ marginLeft: 8 }}>
-            <Ionicons name="close" size={18} color="#3A6070" />
-          </Pressable>
+
+          {/* Description preview */}
+          {selectedPin.description.length > 0 && (
+            <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 10, lineHeight: 17 }} numberOfLines={2}>
+              {selectedPin.description}
+            </Text>
+          )}
         </View>
       )}
 
-      {/* ── Hint when no pin selected ── */}
+      {/* ── No pin selected hint ── */}
       {!selectedPin && (
         <View style={{
           position: 'absolute', bottom: 110, left: 16, right: 16,
@@ -268,8 +372,10 @@ export default function MapScreen() {
           borderWidth: 1, borderColor: '#1E3347',
         }}>
           <Ionicons name="information-circle-outline" size={18} color="#3A6070" />
-          <Text style={{ color: '#3A6070', fontSize: 12 }}>
-            Tap a pin on the map to see issue details
+          <Text style={{ color: '#3A6070', fontSize: 12, flex: 1 }}>
+            {reports.length === 0
+              ? 'No active reports yet — be the first to report!'
+              : `${filteredPins.length} report${filteredPins.length !== 1 ? 's' : ''} shown · Tap a pin for details`}
           </Text>
         </View>
       )}

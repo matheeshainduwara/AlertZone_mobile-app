@@ -1,119 +1,92 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   Pressable,
-  Image,
   FlatList,
   Modal,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScrollContext } from '../../config/tabBarScrollContext';
+import { useAuth } from '../../config/authConfig';
+import { db } from '../../services/firebase';
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+} from 'firebase/firestore';
+import { Image } from 'react-native';
 
 // ─────────────────────────────────────────────
-// TODO: Replace with Firebase fetch
-// import { auth, db } from '../../services/firebase';
-// import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-// useEffect(() => {
-//   const q = query(
-//     collection(db, 'reports'),
-//     where('uid', '==', auth.currentUser.uid),
-//     orderBy('createdAt', 'desc')
-//   );
-//   const unsub = onSnapshot(q, (snap) => setReports(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-//   return unsub;
-// }, []);
+// Types
 // ─────────────────────────────────────────────
-
-type ReportStatus = 'PENDING' | 'FIXING' | 'RESOLVED' | 'REJECTED';
+type ReportStatus = 'PENDING' | 'ASSIGNED' | 'FIXING' | 'RESOLVED' | 'REJECTED';
 
 interface Report {
   id: string;
-  refId: string;
   title: string;
   category: string;
   categoryIcon: string;
-  location: string;
+  categoryColor: string;
   description: string;
   status: ReportStatus;
-  date: string;
-  image?: string;
-  resolvedNote?: string;
-  upvotes: number;
+  upvoteCount: number;
+  imageUrls: string[];
+  location: { address: string; latitude: number; longitude: number };
+  resolutionNote?: string;
+  createdAt: any;
+  statusHistory: Array<{ status: string; changedAt: string; changedBy: string; note?: string }>;
 }
 
+// ─────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────
 const STATUS_CONFIG: Record<ReportStatus, { label: string; color: string; bg: string; icon: string }> = {
   PENDING:  { label: 'Pending',  color: '#F59E0B', bg: '#3D2E0A', icon: 'time-outline'             },
-  FIXING:   { label: 'Fixing',   color: '#4CC2D1', bg: '#0D2A35', icon: 'construct-outline'        },
-  RESOLVED: { label: 'Resolved', color: '#30A89C', bg: '#0D3D35', icon: 'checkmark-circle-outline' },
-  REJECTED: { label: 'Rejected', color: '#E05C5C', bg: '#3D1515', icon: 'close-circle-outline'     },
+  ASSIGNED: { label: 'Assigned', color: '#60A5FA', bg: '#0D1A3D', icon: 'person-add-outline'        },
+  FIXING:   { label: 'Fixing',   color: '#4CC2D1', bg: '#0D2A35', icon: 'construct-outline'         },
+  RESOLVED: { label: 'Resolved', color: '#30A89C', bg: '#0D3D35', icon: 'checkmark-circle-outline'  },
+  REJECTED: { label: 'Rejected', color: '#E05C5C', bg: '#3D1515', icon: 'close-circle-outline'      },
 };
 
-// ── Mock Data ──
-const MOCK_REPORTS: Report[] = [
-  {
-    id: '1', refId: 'AZ-9921',
-    title: 'Large Pothole',
-    category: 'Road & Traffic', categoryIcon: 'car-outline',
-    location: 'No. 06, Nawala Road, Rajagiriya, Sri Lanka',
-    description: 'There is a very large pothole on the left lane that has caused multiple near-accidents.',
-    status: 'FIXING', date: '2 hours ago',
-    image: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?w=400&q=80',
-    upvotes: 12,
-  },
-  {
-    id: '2', refId: 'AZ-9880',
-    title: 'Broken Streetlight',
-    category: 'Road & Traffic', categoryIcon: 'car-outline',
-    location: '4th & Mission St, Colombo',
-    description: 'The streetlight has been out for 3 days creating a safety hazard at night.',
-    status: 'PENDING', date: 'Yesterday',
-    image: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400&q=80',
-    upvotes: 5,
-  },
-  {
-    id: '3', refId: 'AZ-9750',
-    title: 'Blocked Drain',
-    category: 'Water & Drainage', categoryIcon: 'water-outline',
-    location: 'Main St, Nugegoda',
-    description: 'Drain is completely blocked causing flooding after rain.',
-    status: 'RESOLVED', date: '3 days ago',
-    resolvedNote: 'Municipal crew cleared the drain and conducted a full inspection.',
-    upvotes: 28,
-  },
-  {
-    id: '4', refId: 'AZ-9600',
-    title: 'Illegal Dumping',
-    category: 'Waste & Env.', categoryIcon: 'trash-outline',
-    location: 'Havelock Road, Colombo 5',
-    description: 'Large pile of construction waste dumped on the roadside.',
-    status: 'REJECTED', date: '1 week ago',
-    resolvedNote: 'Unable to verify location. Please resubmit with clearer evidence.',
-    upvotes: 3,
-  },
-  {
-    id: '5', refId: 'AZ-9540',
-    title: 'Damaged Footpath',
-    category: 'Bridge & Structural', categoryIcon: 'git-network-outline',
-    location: 'Park Avenue, Borella',
-    description: 'Footpath tiles are cracked and uplifted, posing a tripping hazard.',
-    status: 'PENDING', date: '1 week ago',
-    upvotes: 9,
-  },
-];
+const TIMELINE_STATUSES: ReportStatus[] = ['PENDING', 'ASSIGNED', 'FIXING', 'RESOLVED'];
 
 const FILTER_TABS = ['All', 'Pending', 'Fixing', 'Resolved', 'Rejected'] as const;
 type FilterTab = typeof FILTER_TABS[number];
+
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function formatDate(ts: any): string {
+  if (!ts) return '';
+  try {
+    const d = ts?.toDate ? ts.toDate() : new Date(ts);
+    const now = new Date();
+    const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+    if (diff < 60)  return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  } catch {
+    return '';
+  }
+}
 
 // ─────────────────────────────────────────────
 // Report Detail Modal
 // ─────────────────────────────────────────────
 function ReportDetailModal({ report, onClose }: { report: Report | null; onClose: () => void }) {
   if (!report) return null;
-  const cfg = STATUS_CONFIG[report.status];
+  const cfg = STATUS_CONFIG[report.status] ?? STATUS_CONFIG.PENDING;
+
+  const timelineIndex = TIMELINE_STATUSES.indexOf(report.status);
 
   return (
     <Modal visible={!!report} animationType="slide" transparent={false}>
@@ -131,76 +104,107 @@ function ReportDetailModal({ report, onClose }: { report: Report | null; onClose
             </View>
           </View>
 
-          {/* Image */}
-          {report.image && (
+          {/* Image (first one if exists) */}
+          {report.imageUrls?.[0] && (
             <View className="mx-5 mb-4 rounded-2xl overflow-hidden" style={{ height: 180 }}>
-              <Image source={{ uri: report.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={{ uri: report.imageUrls[0] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             </View>
           )}
 
-          {/* Ref + Title */}
+          {/* Title + meta */}
           <View className="px-5 mb-4">
-            <Text className="text-[#4CC2D1] text-xs font-bold mb-1">Ref: {report.refId}</Text>
+            <Text className="text-[#4CC2D1] text-xs font-bold mb-1">
+              Ref: {report.id.slice(0, 8).toUpperCase()}
+            </Text>
             <Text className="text-white text-2xl font-bold">{report.title}</Text>
             <View className="flex-row items-center mt-2 gap-2">
-              <View className="flex-row items-center gap-1">
-                <Ionicons name={report.categoryIcon as any} size={13} color="#5A7D8A" />
-                <Text className="text-gray-500 text-xs">{report.category}</Text>
-              </View>
+              <Ionicons name={report.categoryIcon as any} size={13} color="#5A7D8A" />
+              <Text className="text-gray-500 text-xs">{report.category}</Text>
               <Text className="text-gray-600">•</Text>
-              <Text className="text-gray-500 text-xs">{report.date}</Text>
+              <Text className="text-gray-500 text-xs">{formatDate(report.createdAt)}</Text>
             </View>
           </View>
 
-          {/* Info Cards */}
           <View className="px-5 gap-3 mb-4">
-            {/* Status timeline */}
+
+            {/* Status Timeline */}
             <View className="bg-[#111E27] rounded-2xl p-4" style={{ borderWidth: 1, borderColor: '#1E3347' }}>
-              <Text className="text-white font-bold mb-3">Status Timeline</Text>
-              {(['PENDING', 'FIXING', 'RESOLVED'] as ReportStatus[]).map((s, i) => {
-                const stepCfg   = STATUS_CONFIG[s];
-                const isDone    = ['PENDING', 'FIXING', 'RESOLVED'].indexOf(report.status) >= i;
-                const isCurrent = report.status === s;
-                if (report.status === 'REJECTED' && s !== 'PENDING') return null;
-                return (
-                  <View key={s} className="flex-row items-center mb-3">
-                    <View className="w-8 h-8 rounded-full items-center justify-center mr-3"
-                      style={{ backgroundColor: isDone ? stepCfg.bg : '#1A2D3D' }}
-                    >
-                      <Ionicons name={stepCfg.icon as any} size={16} color={isDone ? stepCfg.color : '#2D4F5C'} />
+              <Text className="text-white font-bold mb-4">Status Timeline</Text>
+
+              {report.status === 'REJECTED' ? (
+                /* Rejected path */
+                <>
+                  {(['PENDING'] as ReportStatus[]).map((s) => {
+                    const sc = STATUS_CONFIG[s];
+                    const done = true;
+                    return (
+                      <View key={s} className="flex-row items-center mb-3">
+                        <View className="w-8 h-8 rounded-full items-center justify-center mr-3"
+                          style={{ backgroundColor: sc.bg }}>
+                          <Ionicons name={sc.icon as any} size={16} color={sc.color} />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-sm font-semibold" style={{ color: sc.color }}>{sc.label}</Text>
+                        </View>
+                        <Ionicons name="checkmark" size={14} color={sc.color} />
+                      </View>
+                    );
+                  })}
+                  <View className="flex-row items-center">
+                    <View className="w-8 h-8 rounded-full items-center justify-center mr-3 bg-[#3D1515]">
+                      <Ionicons name="close-circle-outline" size={16} color="#E05C5C" />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-semibold" style={{ color: isDone ? stepCfg.color : '#3A5060' }}>
-                        {stepCfg.label}
-                      </Text>
-                      {isCurrent && <Text className="text-gray-500 text-xs">Current status</Text>}
+                      <Text className="text-[#E05C5C] font-semibold text-sm">Rejected</Text>
+                      <Text className="text-gray-500 text-xs">Current status</Text>
                     </View>
-                    {isCurrent && (
-                      <View className="w-2 h-2 rounded-full" style={{ backgroundColor: stepCfg.color }} />
-                    )}
+                    <View className="w-2 h-2 rounded-full bg-[#E05C5C]" />
                   </View>
-                );
-              })}
-              {report.status === 'REJECTED' && (
-                <View className="flex-row items-center">
-                  <View className="w-8 h-8 rounded-full items-center justify-center mr-3 bg-[#3D1515]">
-                    <Ionicons name="close-circle-outline" size={16} color="#E05C5C" />
-                  </View>
-                  <Text className="text-[#E05C5C] font-semibold text-sm">Rejected</Text>
-                </View>
+                </>
+              ) : (
+                /* Normal path */
+                TIMELINE_STATUSES.map((s, i) => {
+                  const sc = STATUS_CONFIG[s];
+                  const done = timelineIndex >= i;
+                  const isCurrent = report.status === s;
+                  return (
+                    <View key={s} className="flex-row items-center mb-3">
+                      {/* Connector line */}
+                      <View style={{ alignItems: 'center', marginRight: 12 }}>
+                        <View className="w-8 h-8 rounded-full items-center justify-center"
+                          style={{ backgroundColor: done ? sc.bg : '#1A2D3D' }}>
+                          <Ionicons name={sc.icon as any} size={16} color={done ? sc.color : '#2D4F5C'} />
+                        </View>
+                        {i < TIMELINE_STATUSES.length - 1 && (
+                          <View style={{
+                            width: 2, height: 16, marginTop: 2,
+                            backgroundColor: done ? sc.color + '40' : '#1E3347',
+                          }} />
+                        )}
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-sm font-semibold" style={{ color: done ? sc.color : '#3A5060' }}>
+                          {sc.label}
+                        </Text>
+                        {isCurrent && <Text className="text-gray-500 text-xs">Current status</Text>}
+                      </View>
+                      {isCurrent && <View className="w-2 h-2 rounded-full" style={{ backgroundColor: sc.color }} />}
+                      {done && !isCurrent && <Ionicons name="checkmark" size={14} color={sc.color} />}
+                    </View>
+                  );
+                })
               )}
             </View>
 
             {/* Location */}
             <View className="bg-[#111E27] rounded-2xl p-4 flex-row items-start gap-3"
-              style={{ borderWidth: 1, borderColor: '#1E3347' }}
-            >
+              style={{ borderWidth: 1, borderColor: '#1E3347' }}>
               <View className="w-8 h-8 rounded-lg bg-[#1E3347] items-center justify-center">
                 <Ionicons name="location-outline" size={16} color="#4CC2D1" />
               </View>
               <View className="flex-1">
                 <Text className="text-gray-500 text-[10px] uppercase font-bold tracking-wide mb-1">Location</Text>
-                <Text className="text-white text-sm leading-5">{report.location}</Text>
+                <Text className="text-white text-sm leading-5">{report.location?.address ?? 'Unknown'}</Text>
               </View>
             </View>
 
@@ -210,29 +214,26 @@ function ReportDetailModal({ report, onClose }: { report: Report | null; onClose
               <Text className="text-white text-sm leading-6">{report.description}</Text>
             </View>
 
-            {/* Community upvotes */}
+            {/* Upvotes */}
             <View className="bg-[#111E27] rounded-2xl p-4 flex-row items-center justify-between"
-              style={{ borderWidth: 1, borderColor: '#1E3347' }}
-            >
+              style={{ borderWidth: 1, borderColor: '#1E3347' }}>
               <View className="flex-row items-center gap-2">
                 <Ionicons name="arrow-up-circle-outline" size={20} color="#4CC2D1" />
-                <Text className="text-white font-semibold">{report.upvotes} community upvotes</Text>
+                <Text className="text-white font-semibold">{report.upvoteCount} community upvotes</Text>
               </View>
-              <Pressable className="px-4 py-2 rounded-xl bg-[#1E3347] active:opacity-70">
-                <Text className="text-[#4CC2D1] text-sm font-semibold">Upvote</Text>
-              </Pressable>
             </View>
 
-            {/* Resolution note (if exists) */}
-            {report.resolvedNote && (
+            {/* Resolution / Rejection note */}
+            {report.resolutionNote && (
               <View className="bg-[#111E27] rounded-2xl p-4" style={{ borderWidth: 1, borderColor: '#1E3347' }}>
                 <Text className="text-gray-500 text-[10px] uppercase font-bold tracking-wide mb-2">
                   {report.status === 'REJECTED' ? 'Rejection Reason' : 'Resolution Note'}
                 </Text>
-                <Text className="text-white text-sm leading-6">{report.resolvedNote}</Text>
+                <Text className="text-white text-sm leading-6">{report.resolutionNote}</Text>
               </View>
             )}
           </View>
+
         </ScrollView>
       </LinearGradient>
     </Modal>
@@ -243,19 +244,16 @@ function ReportDetailModal({ report, onClose }: { report: Report | null; onClose
 // Report Card
 // ─────────────────────────────────────────────
 function ReportCard({ report, onPress }: { report: Report; onPress: () => void }) {
-  const cfg = STATUS_CONFIG[report.status];
+  const cfg = STATUS_CONFIG[report.status] ?? STATUS_CONFIG.PENDING;
   return (
     <Pressable onPress={onPress} className="mb-3 active:opacity-80">
       <View className="bg-[#111E27] rounded-2xl overflow-hidden" style={{ borderWidth: 1, borderColor: '#1E3347' }}>
         <View className="flex-row">
-          {/* Image thumbnail */}
-          {report.image ? (
-            <Image source={{ uri: report.image }} style={{ width: 90, height: 90 }} resizeMode="cover" />
-          ) : (
-            <View className="w-[90px] h-[90px] bg-[#1E3347] items-center justify-center">
-              <Ionicons name={report.categoryIcon as any} size={28} color="#2D4F5C" />
-            </View>
-          )}
+          {/* Category icon block */}
+          <View className="w-[80px] h-[80px] items-center justify-center"
+            style={{ backgroundColor: (report.categoryColor ?? '#4CC2D1') + '18' }}>
+            <Ionicons name={report.categoryIcon as any} size={28} color={report.categoryColor ?? '#4CC2D1'} />
+          </View>
 
           {/* Info */}
           <View className="flex-1 p-3 justify-between">
@@ -265,15 +263,15 @@ function ReportCard({ report, onPress }: { report: Report; onPress: () => void }
                 <Text className="text-[10px] font-bold" style={{ color: cfg.color }}>{cfg.label}</Text>
               </View>
             </View>
-            <Text className="text-gray-500 text-xs mt-1" numberOfLines={1}>{report.category}</Text>
-            <View className="flex-row items-center justify-between mt-2">
+            <Text className="text-gray-500 text-xs mt-0.5" numberOfLines={1}>{report.category}</Text>
+            <View className="flex-row items-center justify-between mt-1">
               <View className="flex-row items-center gap-1">
                 <Ionicons name="location-outline" size={11} color="#3A6070" />
                 <Text className="text-gray-600 text-[11px]" numberOfLines={1} style={{ maxWidth: 140 }}>
-                  {report.location}
+                  {report.location?.address ?? 'Unknown'}
                 </Text>
               </View>
-              <Text className="text-gray-600 text-[10px]">{report.date}</Text>
+              <Text className="text-gray-600 text-[10px]">{formatDate(report.createdAt)}</Text>
             </View>
           </View>
         </View>
@@ -283,26 +281,72 @@ function ReportCard({ report, onPress }: { report: Report; onPress: () => void }
 }
 
 // ─────────────────────────────────────────────
-// Main Screen
+// Main History Screen
 // ─────────────────────────────────────────────
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const { onScroll } = useScrollContext();
+  const { user } = useAuth();
 
+  const [reports, setReports]           = useState<Report[]>([]);
+  const [firestoreLoading, setFirestoreLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('All');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
-  // TODO: Replace MOCK_REPORTS with Firebase snapshot
-  const allReports = MOCK_REPORTS;
+  // ── Subscribe to current user's reports ──
+  useEffect(() => {
+    if (!user) return;
 
-  const filtered = allReports.filter((r) => {
+    const q = query(
+      collection(db, 'reports'),
+      where('uid', '==', user.uid),
+      orderBy('createdAt', 'desc'),
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const data: Report[] = snap.docs.map((d) => ({
+          id: d.id,
+          ...(d.data() as Omit<Report, 'id'>),
+        }));
+        setReports(data);
+        setFirestoreLoading(false);
+      },
+      (err) => {
+        console.error('❌ History Firestore error:', err);
+        setFirestoreLoading(false);
+      },
+    );
+
+    return unsub;
+  }, [user]);
+
+  // Update selected report when real-time data changes
+  useEffect(() => {
+    if (selectedReport) {
+      const updated = reports.find((r) => r.id === selectedReport.id);
+      if (updated) setSelectedReport(updated);
+    }
+  }, [reports]);
+
+  const filtered = reports.filter((r) => {
     if (activeFilter === 'All')      return true;
     if (activeFilter === 'Pending')  return r.status === 'PENDING';
-    if (activeFilter === 'Fixing')   return r.status === 'FIXING';
+    if (activeFilter === 'Fixing')   return r.status === 'FIXING' || r.status === 'ASSIGNED';
     if (activeFilter === 'Resolved') return r.status === 'RESOLVED';
     if (activeFilter === 'Rejected') return r.status === 'REJECTED';
     return true;
   });
+
+  const countFor = (tab: FilterTab): number => {
+    if (tab === 'All')      return reports.length;
+    if (tab === 'Pending')  return reports.filter((r) => r.status === 'PENDING').length;
+    if (tab === 'Fixing')   return reports.filter((r) => r.status === 'FIXING' || r.status === 'ASSIGNED').length;
+    if (tab === 'Resolved') return reports.filter((r) => r.status === 'RESOLVED').length;
+    if (tab === 'Rejected') return reports.filter((r) => r.status === 'REJECTED').length;
+    return 0;
+  };
 
   return (
     <LinearGradient colors={['#0D1F2D', '#0A1820', '#071318']} style={{ flex: 1 }}>
@@ -323,7 +367,7 @@ export default function HistoryScreen() {
             <Text className="text-white text-xl font-bold tracking-tight">My Reports</Text>
           </View>
           <View className="bg-[#1E3347] px-3 py-1.5 rounded-full">
-            <Text className="text-[#4CC2D1] text-xs font-bold">{allReports.length} Total</Text>
+            <Text className="text-[#4CC2D1] text-xs font-bold">{reports.length} Total</Text>
           </View>
         </View>
 
@@ -335,9 +379,7 @@ export default function HistoryScreen() {
         >
           {FILTER_TABS.map((tab) => {
             const isActive = activeFilter === tab;
-            const count = tab === 'All'
-              ? allReports.length
-              : allReports.filter(r => r.status === tab.toUpperCase()).length;
+            const count = countFor(tab);
             return (
               <Pressable
                 key={tab}
@@ -353,8 +395,7 @@ export default function HistoryScreen() {
                   {tab}
                 </Text>
                 <View className="px-1.5 py-0.5 rounded-full"
-                  style={{ backgroundColor: isActive ? 'rgba(7,19,24,0.2)' : '#1E3347' }}
-                >
+                  style={{ backgroundColor: isActive ? 'rgba(7,19,24,0.2)' : '#1E3347' }}>
                   <Text className="text-[10px] font-bold" style={{ color: isActive ? '#071318' : '#4CC2D1' }}>
                     {count}
                   </Text>
@@ -366,13 +407,22 @@ export default function HistoryScreen() {
 
         {/* ── Report List ── */}
         <View className="px-5">
-          {filtered.length === 0 ? (
+          {firestoreLoading ? (
+            <View className="items-center py-16">
+              <ActivityIndicator color="#4CC2D1" size="large" />
+              <Text className="text-gray-500 mt-4 text-sm">Loading your reports…</Text>
+            </View>
+          ) : filtered.length === 0 ? (
             <View className="items-center py-16">
               <View className="w-16 h-16 rounded-full bg-[#111E27] items-center justify-center mb-4">
                 <Ionicons name="document-outline" size={30} color="#2D4F5C" />
               </View>
-              <Text className="text-gray-500 font-semibold">No {activeFilter} reports</Text>
-              <Text className="text-gray-600 text-sm mt-1">Your reports will appear here</Text>
+              <Text className="text-gray-500 font-semibold">
+                {activeFilter === 'All' ? 'No reports yet' : `No ${activeFilter} reports`}
+              </Text>
+              <Text className="text-gray-600 text-sm mt-1">
+                {activeFilter === 'All' ? 'Submit your first report using the + button' : 'Your reports will appear here'}
+              </Text>
             </View>
           ) : (
             filtered.map((report) => (
@@ -386,7 +436,6 @@ export default function HistoryScreen() {
         </View>
       </ScrollView>
 
-      {/* Detail Modal */}
       <ReportDetailModal
         report={selectedReport}
         onClose={() => setSelectedReport(null)}
