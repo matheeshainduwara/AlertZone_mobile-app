@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
@@ -334,11 +333,9 @@ const validatePassword = (password:string) => {
         transparent={true}
         visible={isSuccessModalVisible}
       >
-        {/* ✅ BlurView replaces the plain black overlay — frosted glass effect */}
-        <BlurView
-          intensity={100}
-          tint="dark"
-          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}
+        {/* Replaced BlurView with simple View to fix ViewManager crash */}
+        <View
+          style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
         >
           <View className="bg-[#1E3A44] border border-[#30A89C] rounded-3xl p-8 w-full items-center shadow-2xl">
             
@@ -373,7 +370,7 @@ const validatePassword = (password:string) => {
               </Pressable>
             </View>
           </View>
-        </BlurView>
+        </View>
       </Modal>
 
     </LinearGradient>

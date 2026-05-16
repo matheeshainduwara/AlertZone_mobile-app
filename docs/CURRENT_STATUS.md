@@ -1,4 +1,5 @@
 # Current Status — AlertZone Mobile App
+> **Full Log:** [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)
 
 > **Last Updated:** 2026-05-16
 >
@@ -12,7 +13,7 @@
 |---|---|---|
 | Phase 0: Architecture Cleanup | 🔴 Not Started | Planned next |
 | Phase 1: Core Firebase Integration | 🟡 In Progress | Auth ✅, Report submit ✅, Map live ✅, History live ✅ |
-| Phase 2: Report System | 🟡 In Progress | Submit + track working; image upload pending |
+| Phase 2: Report System | 🟢 Done | Submit + track + images + location search working ✅ |
 | Phase 3: Community Features | 🔴 Not Started | Upvoting UI exists but not functional |
 | Phase 4: Notifications | 🔴 Not Started | — |
 | Phase 5: Badge System | 🔴 Not Started | Static badges shown in profile |
@@ -69,7 +70,10 @@
 - [x] Issue pins — live Firestore subscription (`onSnapshot`) ✅
 - [x] Filter chips by category — filters Firestore data in real-time ✅
 - [x] Search bar — filters by title or address ✅
-- [x] Pin popup — shows status badge, category, address, upvote count ✅
+- [x] Category Counts — shows number of reports by type within radius ✅
+- [x] Navigation Support — centers on specific report if params provided ✅
+- [x] User area circle (red) around device location ✅
+- [x] Radius control — dynamic circle size (1km to 15km) ✅
 - [x] Google Maps renders with dark theme ✅
 - [x] User location permission + centering ✅
 - [x] Zoom in/out + recenter controls ✅
@@ -78,24 +82,29 @@
 ### Report Screen (`report.tsx`) ✅ LIVE
 - [x] GPS location — real `expo-location` with permission request ✅
 - [x] Interactive MapView with **draggable marker** ✅
-- [x] Recenter to GPS button on map ✅
-- [x] Reverse geocoding — address from coordinates ✅
-- [x] Submit saves real Firestore document ✅
+- [x] Full-screen Map modal for precise positioning ✅
+- [x] Location Search — search by address/name ✅
+- [x] Photo evidence — `expo-image-picker` wired (max 3 images) ✅
+- [x] Optional Photos — allow submission without photos (with confirmation) ✅
+- [x] Image validation — size limit (<2MB) + auto-compression ✅
+- [x] "Other" category added ✅
+- [x] GPS Status tag fix ("GPS Inactive") ✅
+- [x] Visual Feedback — active state for all pressables ✅
+- [x] Submit saves real Firestore document with images ✅
 - [x] Reference ID — real Firestore document ID ✅
 - [x] Contribution points +10 on submit ✅
 - [x] Category selection modal ✅
 - [x] Description input with character count ✅
 - [x] Success screen with real ref ID ✅
-- [ ] Photo/Video evidence — `expo-image-picker` not yet wired
 
 ### History Screen (`history.tsx`) ✅ LIVE
 - [x] Report list — live Firestore subscription for current user ✅
+- [x] View on Map — navigate to Map tab and center on report ✅
 - [x] Filters (All/Pending/Fixing/Resolved/Rejected) — filter real data ✅
 - [x] Report detail modal — shows real Firestore data ✅
 - [x] Status timeline with ASSIGNED stage ✅
 - [x] Real-time updates — modal reflects status changes instantly ✅
 - [x] Human-readable date formatting ✅
-- [ ] Upvote button — UI present but not functional yet
 
 ### Profile Screen (`profile.tsx`)
 - [ ] Badges — hardcoded `BADGES` array, not computed from user activity
@@ -188,6 +197,7 @@
 | `react-native-toast-message` | ✅ | ✅ | Custom config working |
 | `nativewind` | ✅ | ✅ | TailwindCSS styling |
 | `expo-haptics` | ✅ | ❌ | Not used yet |
-| `expo-image-picker` | ❌ Not installed | — | Needed for report photos |
+| `expo-image-picker` | ✅ | ✅ | For report photos |
+| `expo-image-manipulator` | ✅ | ✅ | For photo compression |
 | `expo-notifications` | ❌ Not installed | — | Needed for push notifications |
 | `expo-camera` | ❌ Not installed | — | May be needed for camera |

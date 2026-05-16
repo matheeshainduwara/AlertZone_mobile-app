@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScrollContext } from '../../config/tabBarScrollContext';
 import { useAuth } from '../../config/authConfig';
@@ -223,6 +224,26 @@ function ReportDetailModal({ report, onClose }: { report: Report | null; onClose
               </View>
             </View>
 
+            {/* View on Map Button */}
+            <Pressable
+              onPress={() => {
+                onClose();
+                router.push({
+                  pathname: '/(tabs)/map',
+                  params: { 
+                    lat: report.location.latitude, 
+                    lng: report.location.longitude,
+                    id: report.id 
+                  }
+                });
+              }}
+              className="bg-[#1E3347] rounded-2xl p-4 flex-row items-center justify-center gap-2 active:opacity-70"
+              style={{ borderWidth: 1, borderColor: '#4CC2D1' }}
+            >
+              <Ionicons name="map-outline" size={20} color="#4CC2D1" />
+              <Text className="text-[#4CC2D1] font-bold">View on Map</Text>
+            </Pressable>
+
             {/* Resolution / Rejection note */}
             {report.resolutionNote && (
               <View className="bg-[#111E27] rounded-2xl p-4" style={{ borderWidth: 1, borderColor: '#1E3347' }}>
@@ -285,6 +306,7 @@ function ReportCard({ report, onPress }: { report: Report; onPress: () => void }
 // ─────────────────────────────────────────────
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { onScroll } = useScrollContext();
   const { user } = useAuth();
 

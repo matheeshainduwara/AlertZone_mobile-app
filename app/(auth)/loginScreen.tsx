@@ -29,15 +29,25 @@ export default function LoginScreen() {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordFromStorage, setIsPasswordFromStorage] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
 
-  // Pre-fill email if Remember Me was previously saved
+  // Pre-fill email/password if Remember Me was previously saved
   useEffect(() => {
-    AsyncStorage.getItem('rememberMe').then((saved) => {
-      if (saved) {
-        setEmail(saved);
-        setRememberMe(true);
+    AsyncStorage.getItem('rememberMeData').then((json) => {
+      if (json) {
+        try {
+          const data = JSON.parse(json);
+          setEmail(data.email || '');
+          setPassword(data.password || '');
+          setRememberMe(true);
+          if (data.password) setIsPasswordFromStorage(true);
+        } catch (e) {
+          // Fallback if it was just a string (old format)
+          setEmail(json);
+          setRememberMe(true);
+        }
       }
     });
   }, []);
@@ -61,9 +71,9 @@ export default function LoginScreen() {
 
        // 2. Save or clear Remember Me
       if (rememberMe) {
-        await AsyncStorage.setItem('rememberMe', email);
+        await AsyncStorage.setItem('rememberMeData', JSON.stringify({ email, password }));
       } else {
-        await AsyncStorage.removeItem('rememberMe');
+        await AsyncStorage.removeItem('rememberMeData');
       }
 
       // 3. Fetch user profile from Firestore to get their name for the welcome toast
@@ -193,7 +203,16 @@ export default function LoginScreen() {
                     style={{ paddingLeft: 0, marginLeft: 0 }}
                     secureTextEntry={!showPassword}
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(val) => {
+                      if (isPasswordFromStorage) {
+                        // Security: If user modifies a stored password, clear it completely
+                        // so they cannot backspace and reveal a partial stored password.
+                        setPassword('');
+                        setIsPasswordFromStorage(false);
+                      } else {
+                        setPassword(val);
+                      }
+                    }}
                     onFocus={() => setIsPasswordFocused(true)}
                     onBlur={() => setIsPasswordFocused(false)}
                     editable={!loading}
@@ -201,11 +220,24 @@ export default function LoginScreen() {
                     onSubmitEditing={handleLogin}
                   />
                 </View>
-                <Pressable onPress={() => setShowPassword(!showPassword)} className="px-3">
+                <Pressable 
+                  onPress={() => {
+                    if (isPasswordFromStorage) {
+                      Toast.show({
+                        type: 'info',
+                        text1: 'Password Hidden',
+                        text2: 'Type to reveal your password.',
+                      });
+                      return;
+                    }
+                    setShowPassword(!showPassword);
+                  }} 
+                  className="px-3"
+                >
                   <Ionicons
-                    name={showPassword ?  "eye-outline": "eye-off-outline"}
+                    name={showPassword ? "eye-outline" : "eye-off-outline"}
                     size={20}
-                    color="#30A89C"
+                    color={isPasswordFromStorage ? "#2D4F5C" : "#30A89C"}
                   />
                 </Pressable>
               </View>
