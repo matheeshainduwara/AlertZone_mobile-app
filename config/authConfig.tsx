@@ -10,6 +10,10 @@ export interface UserProfile {
   email: string;
   phoneNumber: string;
   address?: string;
+  province?: string;
+  district?: string;
+  localGovernmentArea?: string;
+  nic?: string;
   role: 'citizen' | 'admin';
   status: 'active' | 'suspended';
   isVerified: boolean;

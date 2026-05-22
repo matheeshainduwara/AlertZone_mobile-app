@@ -19,6 +19,8 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../config/authConfig';
 import { useScrollContext } from '../../config/tabBarScrollContext';
 import { db } from '../../services/firebase';
+import { sriLankaGeographics } from '../../config/sriLankaRegions';
+import SelectionModal from '../../components/SelectionModal';
 
 const BADGES = [
   { id: '1', label: 'First\nResponder', icon: 'shield',  color: '#4CC2D1', bg: '#0D2A35' },
@@ -100,6 +102,16 @@ function EditModal({
   const [alertRadius, setAlertRadius] = useState(profile?.alertRadius ?? '10 Km');
   const [saving, setSaving]           = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
+  
+  const [nic, setNic]                 = useState(profile?.nic ?? '');
+  const [province, setProvince]       = useState(profile?.province ?? '');
+  const [district, setDistrict]       = useState(profile?.district ?? '');
+  const [lga, setLga]                 = useState(profile?.localGovernmentArea ?? '');
+
+  // Selectors visibility
+  const [provinceModalVisible, setProvinceModalVisible] = useState(false);
+  const [districtModalVisible, setDistrictModalVisible] = useState(false);
+  const [lgaModalVisible, setLgaModalVisible] = useState(false);
 
   // Sync form fields if profile loads after modal mounts
   useEffect(() => {
@@ -108,12 +120,29 @@ function EditModal({
       setAddress(profile.address ?? '');
       setNotifSound(profile.notificationSound ?? true);
       setAlertRadius(profile.alertRadius ?? '10 Km');
+      setNic(profile.nic ?? '');
+      setProvince(profile.province ?? '');
+      setDistrict(profile.district ?? '');
+      setLga(profile.localGovernmentArea ?? '');
     }
   }, [profile]);
 
   // ── Save to Firestore ──
   const handleSave = async () => {
     if (!user) return;
+    if (!phone || !nic || !province || !district || !lga) {
+      Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please fill in phone, NIC, and region fields.' });
+      return;
+    }
+    const validateNIC = (nicValue: string) => {
+      const oldFormat = /^[0-9]{9}[vVxX]$/;
+      const newFormat = /^[0-9]{12}$/;
+      return oldFormat.test(nicValue) || newFormat.test(nicValue);
+    };
+    if (!validateNIC(nic)) {
+      Toast.show({ type: 'error', text1: 'Invalid NIC', text2: 'Please enter a valid Sri Lankan NIC.' });
+      return;
+    }
     setSaving(true);
     try {
       await updateDoc(doc(db, 'users', user.uid), {
@@ -121,6 +150,10 @@ function EditModal({
         address,
         notificationSound: notifSound,
         alertRadius,
+        nic,
+        province,
+        district,
+        localGovernmentArea: lga,
       });
       await refreshProfile(); // re-fetch so profile screen updates immediately
       Toast.show({ type: 'success', text1: 'Profile Updated!', text2: 'Your changes have been saved.' });
@@ -242,6 +275,27 @@ function EditModal({
 
               <View className="h-px bg-[#1E3347]" />
 
+              {/* NIC */}
+              <View className="flex-row items-center py-3">
+                <View className="w-8 h-8 rounded-lg bg-[#1E3347] items-center justify-center mr-3">
+                  <Ionicons name="card-outline" size={16} color="#4CC2D1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-500 text-[10px] uppercase font-bold tracking-wide">NIC Number</Text>
+                  <TextInput
+                    value={nic}
+                    onChangeText={setNic}
+                    className="text-white text-sm mt-0.5 p-0"
+                    style={{ margin: 0, padding: 0 }}
+                    placeholderTextColor="#5A7D8A"
+                    placeholder="Add NIC number"
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              <View className="h-px bg-[#1E3347]" />
+
               {/* Address */}
               <View className="flex-row items-center py-3">
                 <View className="w-8 h-8 rounded-lg bg-[#1E3347] items-center justify-center mr-3">
@@ -260,6 +314,72 @@ function EditModal({
                   />
                 </View>
               </View>
+
+              <View className="h-px bg-[#1E3347]" />
+
+              {/* Province */}
+              <Pressable onPress={() => setProvinceModalVisible(true)} className="flex-row items-center py-3 active:opacity-80">
+                <View className="w-8 h-8 rounded-lg bg-[#1E3347] items-center justify-center mr-3">
+                  <Ionicons name="map-outline" size={16} color="#4CC2D1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-500 text-[10px] uppercase font-bold tracking-wide">Province</Text>
+                  <Text className={`text-sm mt-0.5 ${province ? 'text-white' : 'text-gray-500'}`}>
+                    {province || 'Select Province'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#2D4F5C" />
+              </Pressable>
+
+              <View className="h-px bg-[#1E3347]" />
+
+              {/* District */}
+              <Pressable
+                onPress={() => {
+                  if (!province) {
+                    Toast.show({ type: 'info', text1: 'Province Required', text2: 'Please select a province first.' });
+                    return;
+                  }
+                  setDistrictModalVisible(true);
+                }}
+                className={`flex-row items-center py-3 active:opacity-80 ${!province ? 'opacity-50' : ''}`}
+              >
+                <View className="w-8 h-8 rounded-lg bg-[#1E3347] items-center justify-center mr-3">
+                  <Ionicons name="navigate-outline" size={16} color="#4CC2D1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-500 text-[10px] uppercase font-bold tracking-wide">District</Text>
+                  <Text className={`text-sm mt-0.5 ${district ? 'text-white' : 'text-gray-500'}`}>
+                    {district || 'Select District'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#2D4F5C" />
+              </Pressable>
+
+              <View className="h-px bg-[#1E3347]" />
+
+              {/* LGA */}
+              <Pressable
+                onPress={() => {
+                  if (!district) {
+                    Toast.show({ type: 'info', text1: 'District Required', text2: 'Please select a district first.' });
+                    return;
+                  }
+                  setLgaModalVisible(true);
+                }}
+                className={`flex-row items-center py-3 active:opacity-80 ${!district ? 'opacity-50' : ''}`}
+              >
+                <View className="w-8 h-8 rounded-lg bg-[#1E3347] items-center justify-center mr-3">
+                  <Ionicons name="business-outline" size={16} color="#4CC2D1" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-500 text-[10px] uppercase font-bold tracking-wide">Local Government Area</Text>
+                  <Text className={`text-sm mt-0.5 ${lga ? 'text-white' : 'text-gray-500'}`}>
+                    {lga || 'Select Local Government'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#2D4F5C" />
+              </Pressable>
             </View>
           </View>
 
@@ -308,6 +428,43 @@ function EditModal({
               <Text className="text-gray-300 font-semibold text-base">Cancel</Text>
             </Pressable>
           </View>
+
+          {/* Reusable Selector Modals inside EditModal */}
+          <SelectionModal
+            visible={provinceModalVisible}
+            onClose={() => setProvinceModalVisible(false)}
+            title="Select Province"
+            options={Object.keys(sriLankaGeographics)}
+            onSelect={(selectedProvince) => {
+              setProvince(selectedProvince);
+              setDistrict('');
+              setLga('');
+            }}
+            selectedValue={province}
+          />
+
+          <SelectionModal
+            visible={districtModalVisible}
+            onClose={() => setDistrictModalVisible(false)}
+            title="Select District"
+            options={province ? Object.keys(sriLankaGeographics[province]) : []}
+            onSelect={(selectedDistrict) => {
+              setDistrict(selectedDistrict);
+              setLga('');
+            }}
+            selectedValue={district}
+          />
+
+          <SelectionModal
+            visible={lgaModalVisible}
+            onClose={() => setLgaModalVisible(false)}
+            title="Select Local Government"
+            options={province && district ? sriLankaGeographics[province][district] : []}
+            onSelect={(selectedLga) => {
+              setLga(selectedLga);
+            }}
+            selectedValue={lga}
+          />
 
         </ScrollView>
       </LinearGradient>
@@ -533,6 +690,14 @@ export default function ProfileScreen() {
           <Text className="text-gray-400 text-sm mt-1">
             {profile.role === 'citizen' ? 'Safety Contributor' : profile.role} • Level {profile.level ?? 1}
           </Text>
+          {profile.localGovernmentArea && (
+            <View className="flex-row items-center mt-2 bg-[#1E3A44]/40 px-3 py-1.5 rounded-full border border-[#2D4F5C]/40">
+              <Ionicons name="location-outline" size={12} color="#4CC2D1" />
+              <Text className="text-gray-300 text-xs ml-1 font-medium">
+                {profile.localGovernmentArea} • {profile.district}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── 3. Stats ── */}

@@ -15,6 +15,8 @@ import {
   View
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { sriLankaGeographics } from '../../config/sriLankaRegions';
+import SelectionModal from '../../components/SelectionModal';
 
 // Firebase Imports
 import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
@@ -38,6 +40,15 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [nic, setNic] = useState('');
+  const [province, setProvince] = useState('');
+  const [district, setDistrict] = useState('');
+  const [lga, setLga] = useState('');
+
+  // Selector Modal Visibility States
+  const [provinceModalVisible, setProvinceModalVisible] = useState(false);
+  const [districtModalVisible, setDistrictModalVisible] = useState(false);
+  const [lgaModalVisible, setLgaModalVisible] = useState(false);
 
   // Refs for keyboard "Next" flow
   const emailRef        = useRef<TextInput>(null);
@@ -82,8 +93,17 @@ const validatePassword = (password:string) => {
 };
 
   const handleSignUp = async () => {
-    if (!fullName || !email || !phone || !password) {
-      Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please fill in all fields to join AlertZone.' });
+    if (!fullName || !email || !phone || !password || !nic || !province || !district || !lga) {
+      Toast.show({ type: 'error', text1: 'Missing Info', text2: 'Please fill in all fields (including NIC and Region) to join AlertZone.' });
+      return;
+    }
+    const validateNIC = (nicValue: string) => {
+      const oldFormat = /^[0-9]{9}[vVxX]$/;
+      const newFormat = /^[0-9]{12}$/;
+      return oldFormat.test(nicValue) || newFormat.test(nicValue);
+    };
+    if (!validateNIC(nic)) {
+      Toast.show({ type: 'error', text1: 'Invalid NIC', text2: 'Please enter a valid Sri Lankan NIC (9 digits + V/X or 12 digits).' });
       return;
     }
     if (!validatePassword(password)) {
@@ -116,7 +136,14 @@ const validatePassword = (password:string) => {
         createdAt: new Date().toISOString(),
         uid: user.uid,
         status: 'active',
-        isVerified: false
+        isVerified: false,
+        nic,
+        province,
+        district,
+        localGovernmentArea: lga,
+        level: 1,
+        contributionPoints: 0,
+        reportsValidated: 0
       });
 
       console.log("✅ Citizen Registered & Verification Link Sent");
@@ -220,12 +247,94 @@ const validatePassword = (password:string) => {
                     style={{ paddingLeft: 0, marginLeft: 0 }}
                     keyboardType="phone-pad"
                     returnKeyType="next"
-                    onSubmitEditing={() => passwordRef.current?.focus()}
                     value={phone}
                     onChangeText={setPhone}
                   />
                 </View>
               </View>
+
+              {/* NIC */}
+              <View className="bg-[#1E3A44] border border-[#2D4F5C] rounded-2xl p-2 flex-row items-center mt-3">
+                <View className="px-4 py-3 border-r border-[#2D4F5C] justify-center items-center">
+                  <Ionicons name="card-outline" size={20} color="#30A89C" />
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text className="text-gray-400 text-[10px] uppercase font-bold">NIC Number:</Text>
+                  <TextInput
+                    placeholder="199912345678 or 991234567V"
+                    placeholderTextColor="#5A7D8A"
+                    className="text-white text-base p-0 mt-0.5"
+                    style={{ paddingLeft: 0, marginLeft: 0 }}
+                    returnKeyType="next"
+                    value={nic}
+                    onChangeText={setNic}
+                    autoCapitalize="characters"
+                  />
+                </View>
+              </View>
+
+              {/* Province Selector */}
+              <Pressable
+                onPress={() => setProvinceModalVisible(true)}
+                className="bg-[#1E3A44] border border-[#2D4F5C] rounded-2xl p-2 flex-row items-center mt-3 active:opacity-80"
+              >
+                <View className="px-4 py-3 border-r border-[#2D4F5C] justify-center items-center">
+                  <Ionicons name="map-outline" size={20} color="#30A89C" />
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text className="text-gray-400 text-[10px] uppercase font-bold">Province:</Text>
+                  <Text className={`text-base mt-0.5 ${province ? 'text-white' : 'text-[#5A7D8A]'}`}>
+                    {province || 'Select Province'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down-outline" size={20} color="#30A89C" style={{ marginRight: 8 }} />
+              </Pressable>
+
+              {/* District Selector */}
+              <Pressable
+                onPress={() => {
+                  if (!province) {
+                    Toast.show({ type: 'info', text1: 'Province Required', text2: 'Please select a province first.' });
+                    return;
+                  }
+                  setDistrictModalVisible(true);
+                }}
+                className={`bg-[#1E3A44] border border-[#2D4F5C] rounded-2xl p-2 flex-row items-center mt-3 active:opacity-80 ${!province ? 'opacity-50' : ''}`}
+              >
+                <View className="px-4 py-3 border-r border-[#2D4F5C] justify-center items-center">
+                  <Ionicons name="navigate-outline" size={20} color="#30A89C" />
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text className="text-gray-400 text-[10px] uppercase font-bold">District:</Text>
+                  <Text className={`text-base mt-0.5 ${district ? 'text-white' : 'text-[#5A7D8A]'}`}>
+                    {district || 'Select District'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down-outline" size={20} color="#30A89C" style={{ marginRight: 8 }} />
+              </Pressable>
+
+              {/* LGA Selector */}
+              <Pressable
+                onPress={() => {
+                  if (!district) {
+                    Toast.show({ type: 'info', text1: 'District Required', text2: 'Please select a district first.' });
+                    return;
+                  }
+                  setLgaModalVisible(true);
+                }}
+                className={`bg-[#1E3A44] border border-[#2D4F5C] rounded-2xl p-2 flex-row items-center mt-3 active:opacity-80 ${!district ? 'opacity-50' : ''}`}
+              >
+                <View className="px-4 py-3 border-r border-[#2D4F5C] justify-center items-center">
+                  <Ionicons name="business-outline" size={20} color="#30A89C" />
+                </View>
+                <View className="ml-3 flex-1">
+                  <Text className="text-gray-400 text-[10px] uppercase font-bold">Local Government Authority:</Text>
+                  <Text className={`text-base mt-0.5 ${lga ? 'text-white' : 'text-[#5A7D8A]'}`}>
+                    {lga || 'Select Local Government'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down-outline" size={20} color="#30A89C" style={{ marginRight: 8 }} />
+              </Pressable>
 
               {/* Password */}
               <View className="bg-[#1E3A44] border border-[#2D4F5C] rounded-2xl p-2 flex-row items-center mt-3">
@@ -372,6 +481,43 @@ const validatePassword = (password:string) => {
           </View>
         </View>
       </Modal>
+
+      {/* Selector Modals */}
+      <SelectionModal
+        visible={provinceModalVisible}
+        onClose={() => setProvinceModalVisible(false)}
+        title="Select Province"
+        options={Object.keys(sriLankaGeographics)}
+        onSelect={(selectedProvince) => {
+          setProvince(selectedProvince);
+          setDistrict('');
+          setLga('');
+        }}
+        selectedValue={province}
+      />
+
+      <SelectionModal
+        visible={districtModalVisible}
+        onClose={() => setDistrictModalVisible(false)}
+        title="Select District"
+        options={province ? Object.keys(sriLankaGeographics[province]) : []}
+        onSelect={(selectedDistrict) => {
+          setDistrict(selectedDistrict);
+          setLga('');
+        }}
+        selectedValue={district}
+      />
+
+      <SelectionModal
+        visible={lgaModalVisible}
+        onClose={() => setLgaModalVisible(false)}
+        title="Select Local Government"
+        options={province && district ? sriLankaGeographics[province][district] : []}
+        onSelect={(selectedLga) => {
+          setLga(selectedLga);
+        }}
+        selectedValue={lga}
+      />
 
     </LinearGradient>
   );
