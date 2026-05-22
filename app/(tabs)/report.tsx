@@ -32,6 +32,8 @@ import Toast from 'react-native-toast-message';
 import { useAuth } from '../../config/authConfig';
 import { db } from '../../services/firebase';
 import { compressImage, isUnderSizeLimit, uploadFile } from '../../services/storage.service';
+import BlurLoadingOverlay from '../../components/BlurLoadingOverlay';
+import PhotoSourceModal from '../../components/PhotoSourceModal';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -376,6 +378,8 @@ export default function ReportScreen() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [uploadStatusText, setUploadStatusText] = useState('Submitting Report');
+  const [photoSourceModalVisible, setPhotoSourceModalVisible] = useState(false);
 
   // ── Submission result ──
   const [submittedRefId, setSubmittedRefId] = useState<string | null>(null);
@@ -500,41 +504,86 @@ export default function ReportScreen() {
   }, [reverseGeocode]);
 
   // ── Image picking ──
-  const pickImages = async () => {
+  const handleCameraLaunch = async () => {
+    try {
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        Toast.show({
+          type: 'error',
+          text1: 'Permission Denied',
+          text2: 'Camera access is required to take a photo.',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        processPickedImages(result.assets.map(a => a.uri));
+      }
+    } catch (e) {
+      console.error('Camera launch error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Camera Error',
+        text2: 'Could not open camera.',
+      });
+    }
+  };
+
+  const handleGalleryLaunch = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: 3 - images.length,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        processPickedImages(result.assets.map(a => a.uri));
+      }
+    } catch (e) {
+      console.error('Gallery launch error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Gallery Error',
+        text2: 'Could not open gallery.',
+      });
+    }
+  };
+
+  const processPickedImages = async (selectedUris: string[]) => {
+    const processedUris: string[] = [];
+
+    for (const uri of selectedUris) {
+      let currentUri = uri;
+      const isUnderLimit = await isUnderSizeLimit(currentUri, 2);
+
+      if (!isUnderLimit) {
+        console.log('📦 Image too large, compressing:', currentUri);
+        currentUri = await compressImage(currentUri);
+        const stillTooLarge = !(await isUnderSizeLimit(currentUri, 2));
+        if (stillTooLarge) {
+          Toast.show({ type: 'error', text1: 'Image too large', text2: 'Even after compression, the image exceeds 2MB.' });
+          continue;
+        }
+      }
+      processedUris.push(currentUri);
+    }
+
+    setImages([...images, ...processedUris].slice(0, 3));
+  };
+
+  const pickImages = () => {
     if (images.length >= 3) {
       Toast.show({ type: 'info', text1: 'Limit reached', text2: 'You can add up to 3 images.' });
       return;
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: 3 - images.length,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      const selectedUris = result.assets.map(a => a.uri);
-      const processedUris: string[] = [];
-
-      for (const uri of selectedUris) {
-        let currentUri = uri;
-        const isUnderLimit = await isUnderSizeLimit(currentUri, 2);
-        
-        if (!isUnderLimit) {
-          console.log('📦 Image too large, compressing:', currentUri);
-          currentUri = await compressImage(currentUri);
-          const stillTooLarge = !(await isUnderSizeLimit(currentUri, 2));
-          if (stillTooLarge) {
-            Toast.show({ type: 'error', text1: 'Image too large', text2: 'Even after compression, the image exceeds 2MB.' });
-            continue;
-          }
-        }
-        processedUris.push(currentUri);
-      }
-
-      setImages([...images, ...processedUris].slice(0, 3));
-    }
+    setPhotoSourceModalVisible(true);
   };
 
   const removeImage = (index: number) => {
@@ -598,15 +647,18 @@ export default function ReportScreen() {
     }
 
     setLoading(true);
+    setUploadStatusText('Preparing evidence...');
     try {
       // 1. Upload images
       const imageUrls: string[] = [];
       for (let i = 0; i < images.length; i++) {
+        setUploadStatusText(`Uploading evidence ${i + 1} of ${images.length}...`);
         const path = `reports/${user.uid}/${Date.now()}_img${i}.jpg`;
         const url = await uploadFile(images[i], path);
         imageUrls.push(url);
       }
 
+      setUploadStatusText('Securing report details...');
       // 2. Add document
       const docRef = await addDoc(collection(db, 'reports'), {
         uid: user.uid,
@@ -643,6 +695,7 @@ export default function ReportScreen() {
 
       // 3. Update user points
       try {
+        setUploadStatusText('Updating rewards...');
         await updateDoc(doc(db, 'users', user.uid), {
           contributionPoints: increment(10),
         });
@@ -650,6 +703,7 @@ export default function ReportScreen() {
         console.error('❌ Points update failed:', err);
       }
 
+      setUploadStatusText('Report submitted successfully!');
       setSubmittedRefId(docRef.id);
     } catch (e: any) {
       console.error('❌ Report submission error:', e);
@@ -937,6 +991,19 @@ export default function ReportScreen() {
         suggestions={suggestions}
         onSelectSuggestion={selectSuggestion}
         isSuggesting={isSuggesting}
+      />
+
+      <BlurLoadingOverlay
+        visible={loading}
+        statusText="Submitting Report"
+        subStatusText={uploadStatusText}
+      />
+
+      <PhotoSourceModal
+        visible={photoSourceModalVisible}
+        onClose={() => setPhotoSourceModalVisible(false)}
+        onSelectCamera={handleCameraLaunch}
+        onSelectGallery={handleGalleryLaunch}
       />
     </LinearGradient>
   );
