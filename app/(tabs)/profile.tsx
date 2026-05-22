@@ -18,6 +18,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
+import * as ImagePicker from 'expo-image-picker';
+import { ref as storageRef, deleteObject } from 'firebase/storage';
+import { storage } from '../../services/firebase';
+import { compressImage, isUnderSizeLimit, uploadFile } from '../../services/storage.service';
 import { useAuth } from '../../config/authConfig';
 import { useScrollContext } from '../../config/tabBarScrollContext';
 import { db } from '../../services/firebase';
@@ -131,6 +135,7 @@ function EditModal({
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [gpsGranted, setGpsGranted] = useState(false);
   const [locLoading, setLocLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   const mapRef = useRef<MapView>(null);
 
@@ -322,10 +327,177 @@ function EditModal({
     }
   };
 
-  // TODO: Wire these to expo-image-picker + Firebase Storage
-  const handleTakePhoto     = () => { setShowImageOptions(false); /* ImagePicker.launchCameraAsync() */ };
-  const handleUploadGallery = () => { setShowImageOptions(false); /* ImagePicker.launchImageLibraryAsync() */ };
-  const handleDeletePhoto   = () => { setShowImageOptions(false); /* deleteObject(storageRef) */ };
+  const processAndUploadAvatar = async (uri: string) => {
+    if (!user) return;
+    setUploadLoading(true);
+    try {
+      const compressedUri = await compressImage(uri);
+      const path = `reports/${user.uid}/avatar_${Date.now()}.jpg`;
+      const downloadUrl = await uploadFile(compressedUri, path);
+      
+      await updateDoc(doc(db, 'users', user.uid), {
+        avatarUrl: downloadUrl,
+      });
+      
+      await refreshProfile();
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Photo Uploaded!',
+        text2: 'Your profile picture has been updated.',
+      });
+    } catch (e) {
+      console.error('❌ Upload avatar error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Upload Failed',
+        text2: 'Could not upload profile picture. Try again.',
+      });
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    setShowImageOptions(false);
+    try {
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        Toast.show({
+          type: 'error',
+          text1: 'Permission Denied',
+          text2: 'Camera access is required to take a photo.',
+        });
+        return;
+      }
+      
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+      
+      const uri = result.assets[0].uri;
+      
+      const sizeOk = await isUnderSizeLimit(uri, 10);
+      if (!sizeOk) {
+        Toast.show({
+          type: 'error',
+          text1: 'File Too Large',
+          text2: 'Maximum photo size allowed is 10MB.',
+        });
+        return;
+      }
+      
+      await processAndUploadAvatar(uri);
+    } catch (e) {
+      console.error('Camera launch error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Camera Error',
+        text2: 'Could not open camera.',
+      });
+    }
+  };
+
+  const handleUploadGallery = async () => {
+    setShowImageOptions(false);
+    try {
+      const galleryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!galleryPermission.granted) {
+        Toast.show({
+          type: 'error',
+          text1: 'Permission Denied',
+          text2: 'Gallery access is required to choose a photo.',
+        });
+        return;
+      }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+      
+      const uri = result.assets[0].uri;
+      
+      const sizeOk = await isUnderSizeLimit(uri, 10);
+      if (!sizeOk) {
+        Toast.show({
+          type: 'error',
+          text1: 'File Too Large',
+          text2: 'Maximum photo size allowed is 10MB.',
+        });
+        return;
+      }
+      
+      await processAndUploadAvatar(uri);
+    } catch (e) {
+      console.error('Gallery launch error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Gallery Error',
+        text2: 'Could not open gallery.',
+      });
+    }
+  };
+
+  const handleDeletePhoto = async () => {
+    setShowImageOptions(false);
+    if (!user) return;
+    if (!profile?.avatarUrl) {
+      Toast.show({
+        type: 'info',
+        text1: 'No Photo',
+        text2: 'You do not have a profile picture to delete.',
+      });
+      return;
+    }
+    
+    setUploadLoading(true);
+    try {
+      const currentUrl = profile.avatarUrl;
+      if (currentUrl.includes('firebasestorage.googleapis.com')) {
+        try {
+          const fileRef = storageRef(storage, currentUrl);
+          await deleteObject(fileRef);
+        } catch (storageErr) {
+          console.warn('Storage deletion warning/error:', storageErr);
+        }
+      }
+      
+      await updateDoc(doc(db, 'users', user.uid), {
+        avatarUrl: null,
+      });
+      
+      await refreshProfile();
+      
+      Toast.show({
+        type: 'success',
+        text1: 'Photo Removed',
+        text2: 'Your profile picture has been deleted.',
+      });
+    } catch (e) {
+      console.error('❌ Delete avatar error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Deletion Failed',
+        text2: 'Could not remove profile picture. Try again.',
+      });
+    } finally {
+      setUploadLoading(false);
+    }
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false}>
@@ -346,7 +518,6 @@ function EditModal({
           {/* Avatar */}
           <View className="items-center mb-6">
             <Pressable onPress={() => setShowImageOptions(true)} className="active:opacity-80">
-              {/* TODO: replace with profile?.avatarUrl once Storage is wired */}
               <Image
                 source={
                   profile?.avatarUrl
@@ -355,6 +526,7 @@ function EditModal({
                 }
                 className="w-24 h-24 rounded-full"
                 style={{ borderWidth: 3, borderColor: '#4CC2D1' }}
+                resizeMode={profile?.avatarUrl ? 'cover' : 'contain'}
               />
               <View className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#4CC2D1] items-center justify-center"
                 style={{ borderWidth: 2, borderColor: '#0A1820' }}
@@ -371,6 +543,10 @@ function EditModal({
             <View className="mx-5 mb-4 bg-[#1E3A44] rounded-2xl overflow-hidden"
               style={{ borderWidth: 1, borderColor: '#2D4F5C' }}
             >
+              <View className="px-4 py-3 bg-[#11232B] flex-row justify-between items-center border-b border-[#2D4F5C]">
+                <Text className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Photo Options</Text>
+                <Text className="text-[#4CC2D1] text-[10px] font-bold">MAX SIZE: 10MB</Text>
+              </View>
               <Pressable onPress={handleTakePhoto} className="flex-row items-center px-4 py-4 active:bg-[#2D4F5C]">
                 <Ionicons name="camera-outline" size={20} color="#4CC2D1" />
                 <Text className="text-white ml-3 font-medium">Take Photo</Text>
@@ -380,11 +556,15 @@ function EditModal({
                 <Ionicons name="image-outline" size={20} color="#4CC2D1" />
                 <Text className="text-white ml-3 font-medium">Upload From Gallery</Text>
               </Pressable>
-              <View className="h-px bg-[#2D4F5C]" />
-              <Pressable onPress={handleDeletePhoto} className="flex-row items-center px-4 py-4 active:bg-[#2D4F5C]">
-                <Ionicons name="trash-outline" size={20} color="#E05C5C" />
-                <Text className="text-[#E05C5C] ml-3 font-medium">Delete Photo</Text>
-              </Pressable>
+              {profile?.avatarUrl ? (
+                <>
+                  <View className="h-px bg-[#2D4F5C]" />
+                  <Pressable onPress={handleDeletePhoto} className="flex-row items-center px-4 py-4 active:bg-[#2D4F5C]">
+                    <Ionicons name="trash-outline" size={20} color="#E05C5C" />
+                    <Text className="text-[#E05C5C] ml-3 font-medium">Delete Photo</Text>
+                  </Pressable>
+                </>
+              ) : null}
             </View>
           )}
 
@@ -717,6 +897,36 @@ function EditModal({
           />
 
         </ScrollView>
+
+        {/* Loading Overlay */}
+        {(uploadLoading || saving) && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(7, 19, 24, 0.85)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 9999,
+            }}
+          >
+            <View
+              className="bg-[#1E3A44] border border-[#30A89C] rounded-3xl p-8 items-center shadow-2xl"
+              style={{ width: '80%', maxWidth: 320 }}
+            >
+              <ActivityIndicator size="large" color="#4CC2D1" className="mb-4" />
+              <Text className="text-white text-base font-bold text-center">
+                {uploadLoading ? 'Uploading Photo...' : 'Saving Changes...'}
+              </Text>
+              <Text className="text-gray-400 text-xs text-center mt-2 leading-4">
+                Please wait while we update your AlertZone profile.
+              </Text>
+            </View>
+          </View>
+        )}
       </LinearGradient>
     </Modal>
   );
@@ -927,6 +1137,7 @@ export default function ProfileScreen() {
               }
               className="w-24 h-24 rounded-full"
               style={{ borderWidth: 3, borderColor: '#4CC2D1' }}
+              resizeMode={profile.avatarUrl ? 'cover' : 'contain'}
             />
             <View className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[#4CC2D1] items-center justify-center"
               style={{ borderWidth: 2, borderColor: '#0A1820' }}
