@@ -202,6 +202,7 @@ export default function HomeScreen() {
   const { user, profile } = useAuth();
   
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [reports, setReports] = useState<ReportPin[]>([]);
   const [nearbyIssues, setNearbyIssues] = useState<ReportPin[]>([]);
   const [latestUpdates, setLatestUpdates] = useState<ReportPin[]>([]);
@@ -259,6 +260,22 @@ export default function HomeScreen() {
     });
     return unsub;
   }, []);
+
+  // 2.5. Fetch unread notifications count in real-time
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(
+      collection(db, 'notifications'),
+      where('recipientUid', '==', user.uid),
+      where('isRead', '==', false)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setUnreadCount(snap.docs.length);
+    }, (err) => {
+      console.error("Home unread count listener error:", err);
+    });
+    return unsub;
+  }, [user?.uid]);
 
   // 3. Process distances when data or location updates
   useEffect(() => {
@@ -324,15 +341,17 @@ export default function HomeScreen() {
           </View>
 
           {/* Notification bell with badge */}
-          <Pressable className="active:opacity-70">
+          <Pressable onPress={() => router.push('/notifications' as any)} className="active:opacity-70">
             <View className="w-10 h-10 rounded-full bg-[#1E3A44] items-center justify-center"
               style={{ borderWidth: 1, borderColor: '#2D4F5C' }}
             >
               <Ionicons name="notifications-outline" size={20} color="#5A7D8A" />
             </View>
-            <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E05C5C] items-center justify-center">
-              <Text className="text-white text-[10px] font-bold">10</Text>
-            </View>
+            {unreadCount > 0 && (
+              <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E05C5C] items-center justify-center">
+                <Text className="text-white text-[10px] font-bold">{unreadCount}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
 

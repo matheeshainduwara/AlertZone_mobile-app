@@ -15,7 +15,7 @@
 | Phase 1: Core Firebase Integration | 🟡 In Progress | Auth ✅, Report submit ✅, Map live ✅, History live ✅ |
 | Phase 2: Report System | 🟢 Done | Submit + track + images + location search working ✅ |
 | Phase 3: Community Features | 🔴 Not Started | Upvoting UI exists but not functional |
-| Phase 4: Notifications | 🔴 Not Started | — |
+| Phase 4: Notifications | 🟢 Done | Expo push tokens + in-app Notification Center ✅ |
 | Phase 5: Badge System | 🔴 Not Started | Static badges shown in profile |
 | Phase 6: Polish & Launch | 🔴 Not Started | — |
 
@@ -64,7 +64,7 @@
 - [ ] Browse Categories — hardcoded array, not from Firestore
 - [ ] Nearby Issues — hardcoded `NEARBY_ISSUES` array with stock images
 - [ ] Latest Updates — hardcoded `LATEST_UPDATES` array
-- [ ] Notification bell badge — hardcoded "10"
+- [x] Notification bell badge — wired to real Firestore unread count ✅
 
 ### Map Screen (`map.tsx`) ✅ LIVE
 - [x] Issue pins — live Firestore subscription (`onSnapshot`) ✅
@@ -113,7 +113,7 @@
 - [ ] Badges — hardcoded `BADGES` array, not computed from user activity
 - [ ] Avatar upload — camera button exists but `expo-image-picker` not wired
 - [ ] "View All" badges link — not functional
-- [ ] Notification badge count — hardcoded "10"
+- [x] Notification sound preference and alert radius edit settings saved to Firestore ✅
 - [x] Stats use real Firestore data ✅
 - [x] Edit profile saves to Firestore ✅
 - [x] Logout fully functional ✅
@@ -125,7 +125,7 @@
 ### Firebase Services
 - [ ] `report.service.ts` — Firestore CRUD for reports
 - [ ] `storage.service.ts` — Image/video upload to Firebase Storage
-- [ ] `notification.service.ts` — FCM integration
+- [x] `notification.service.ts` — Expo push token integration ✅
 - [ ] `user.service.ts` — Separated user operations
 
 ### Hooks
@@ -134,19 +134,19 @@
 - [ ] `useUpvote` — upvote/undo logic
 - [ ] `useImagePicker` — camera/gallery picker wrapper
 - [ ] `useLocation` — expo-location wrapper
-- [ ] `useNotifications` — push notification setup
+- [x] `useNotifications` — push notification setup ✅
 - [ ] `useUserBadges` — badge calculation logic
 
 ### Features
 - [ ] Real report submission to Firestore
 - [ ] Image/video upload to Firebase Storage
 - [ ] Community upvoting system
-- [ ] Push notifications (FCM)
+- [x] Push notifications (Expo Push API) ✅
 - [ ] Badge calculation and display from real data
 - [ ] Area-based report filtering
 - [ ] Google Sign-In (planned for later phase)
 - [ ] Report search functionality
-- [ ] Notification history screen
+- [x] Notification history screen ✅
 - [ ] Report deletion/editing by citizen
 - [ ] Deep linking to specific reports
 
@@ -183,7 +183,7 @@
 | **Authentication** | ✅ Active | Email/password working |
 | **Firestore** | ✅ Active | Only `users` collection used so far |
 | **Storage** | 🔴 Not Set Up | Needed for report images |
-| **Cloud Messaging** | 🔴 Not Set Up | Needed for push notifications |
+| **Cloud Messaging** | 🟢 Active | Configured via Expo Push Service ✅ |
 | **Cloud Functions** | 🔴 Not Set Up | May be needed for badge calculation, notifications |
 | **Security Rules** | 🔴 Not Configured | Default open rules — must fix before production |
 
@@ -202,5 +202,6 @@
 | `expo-haptics` | ✅ | ❌ | Not used yet |
 | `expo-image-picker` | ✅ | ✅ | For report photos |
 | `expo-image-manipulator` | ✅ | ✅ | For photo compression |
-| `expo-notifications` | ❌ Not installed | — | Needed for push notifications |
+| `expo-notifications` | ✅ | ✅ | For push tokens & foreground listening |
+| `expo-constants` | ✅ | ✅ | For reading EAS projectId |
 | `expo-camera` | ❌ Not installed | — | May be needed for camera |

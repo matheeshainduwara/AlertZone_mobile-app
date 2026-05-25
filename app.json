@@ -28,7 +28,11 @@
           "apiKey": "AIzaSyC43kjBIm6oio6od630NQbjVw9x-f2xp5Q"
         }
       },
-      "package": "com.anonymous.alertzone"
+      "package": "com.anonymous.alertzone",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "output": "static",
@@ -58,6 +62,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "55db983e-26bb-4c43-891e-d4e1155bd5ec"
+      }
+    },
+    "owner": "stjalthotage"
   }
 }
