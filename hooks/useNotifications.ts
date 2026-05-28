@@ -4,8 +4,6 @@ import { useAuth } from '../config/authConfig';
 import { registerForPushNotificationsAsync } from '../services/notification.service';
 import { isRunningInExpoGo } from 'expo';
 
-import { addNotificationReceivedListener, addNotificationResponseReceivedListener } from 'expo-notifications/build/NotificationsEmitter';
-
 const isExpoGo = isRunningInExpoGo();
 
 /**
@@ -26,19 +24,21 @@ export function useNotifications() {
       return;
     }
 
+    const Notifications = require('expo-notifications');
+
     if (user?.uid) {
       registerForPushNotificationsAsync(user.uid);
     }
 
     // 2. Listen for notifications that are received while the app is open
-    notificationListener.current = addNotificationReceivedListener(
+    notificationListener.current = Notifications.addNotificationReceivedListener(
       (notification: any) => {
         console.log('📬 Foreground Notification Received:', notification);
       }
     );
 
     // 3. Listen for when user taps on or interacts with a notification
-    responseListener.current = addNotificationResponseReceivedListener(
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(
       (response: any) => {
         const data = response.notification.request.content.data;
         console.log('🖱️ Notification Action Response Tapped:', data);

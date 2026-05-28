@@ -1,60 +1,319 @@
-import { router } from "expo-router";
-import { View, Text, Pressable, Image } from "react-native";
-import Toast from 'react-native-toast-message';
-import { LinearGradient } from "expo-linear-gradient";
+import * as SplashScreen from 'expo-splash-screen';
+import { router } from 'expo-router';
+import React, { useEffect, useRef } from 'react';
+import {
+  Animated,
+  Easing,
+  Image,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../config/authConfig';
 
-
-
+// Keep the native splash visible while we set up
+SplashScreen.preventAutoHideAsync();
 
 export default function Index() {
+  const { user, loading } = useAuth();
+
+  // ── Animation values ──────────────────────────────────────────────────────
+  const logoOpacity  = useRef(new Animated.Value(0)).current;
+  const logoScale    = useRef(new Animated.Value(0.6)).current;
+  const pulseScale   = useRef(new Animated.Value(1)).current;
+  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
+  const textOpacity  = useRef(new Animated.Value(0)).current;
+  const taglineOpacity = useRef(new Animated.Value(0)).current;
+
+  // ── Routing logic ──────────────────────────────────────────────────────────
+  const minTimeElapsed = useRef(false);
+  const navigated = useRef(false);
+
+  // After minimum display time, mark it and attempt navigation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      minTimeElapsed.current = true;
+      tryNavigate();
+    }, 2200);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Whenever auth state resolves, attempt navigation
+  useEffect(() => {
+    if (!loading) {
+      tryNavigate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  const tryNavigate = async () => {
+    // Only navigate once both conditions are met
+    if (navigated.current || loading || !minTimeElapsed.current) return;
+    navigated.current = true;
+
+    try {
+      const seen = await AsyncStorage.getItem('hasSeenOnboarding');
+      if (!seen) {
+        router.replace('/onboarding');
+      } else if (!user) {
+        router.replace('/(auth)/loginScreen');
+      } else {
+        router.replace('/(tabs)/home');
+      }
+    } catch {
+      router.replace('/onboarding');
+    }
+  };
+
+  // ── Animations ────────────────────────────────────────────────────────────
+  useEffect(() => {
+    // Hide native splash and kick off our custom animation
+    SplashScreen.hideAsync();
+
+    // Logo fade + scale in
+    Animated.parallel([
+      Animated.timing(logoOpacity, {
+        toValue: 1,
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(logoScale, {
+        toValue: 1,
+        tension: 60,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Text fades in after logo
+    Animated.sequence([
+      Animated.delay(600),
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Tagline fades in after text
+    Animated.sequence([
+      Animated.delay(900),
+      Animated.timing(taglineOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Pulsing ring — looping
+    const pulse = () => {
+      pulseScale.setValue(1);
+      pulseOpacity.setValue(0.5);
+      Animated.parallel([
+        Animated.timing(pulseScale, {
+          toValue: 1.9,
+          duration: 1800,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseOpacity, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) pulse();
+      });
+    };
+
+    const pulseTimer = setTimeout(pulse, 400);
+    return () => clearTimeout(pulseTimer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <LinearGradient colors={['#0D1F2D', '#0A1820', '#071318']} className="flex-1">
-      <View className="flex-1 items-center justify-center">
-        <Image
-        source={require('../assets/images/iconAlerZone-Bg-none.png')}
-        className="w-48 h-48 mb-4 "
-        resizeMode="contain"
-        >
-
-        </Image>
-          <Text className="text-5xl font-bold">
-            <Text className="text-white">Alert</Text>
-            <Text className="text-[#30A89C]">Zone</Text>
-          </Text>
-        <Text className="text-blue-100 text-lg mt-2 text-center px-10 font-light">
-          Stay Aware. Stay Safe.
-        </Text>
-
-        {/* This button will now take the user to the login page to start the Firebase check */}
-        <Pressable 
-          className="absolute bottom-14 left-0 right-0 mx-14 bg-[#30A89C] p-4 rounded-xl active:opacity-70 "
-          onPress={() => router.push("/onboarding")}
-        >
-          <Text className="text-white text-xl text-center font-bold ">
-            Get Started
-          </Text>
-        </Pressable>
-
-        <Pressable 
-          className="absolute top-8 left-5 px-4 mt-5 py-2  rounded-lg shadow-lg active:opacity-70 border border-gray-200"
-          onPress={() => router.push("/(tabs)/home")}
-        >
-          <Text className="text-gray-300  text-lg">
-            Visit Home
-          </Text>
-        </Pressable>
-
-        <Pressable 
-          className="absolute top-8 right-5 mt-5 px-4 mx-5 py-2 rounded-lg shadow-lg active:opacity-70 border border-gray-200"
-          onPress={() => router.push("/(auth)/loginScreen")}
-        >
-          <Text className="text-gray-300  text-lg">
-            Visit Login
-          </Text>
-        </Pressable>
-
-
+    <View style={styles.container}>
+      {/* Subtle radial glow behind logo */}
+      <View style={styles.glowOuter}>
+        <View style={styles.glowInner} />
       </View>
-    </LinearGradient>
+
+      {/* Pulsing ring */}
+      <Animated.View
+        style={[
+          styles.pulseRing,
+          {
+            transform: [{ scale: pulseScale }],
+            opacity: pulseOpacity,
+          },
+        ]}
+      />
+
+      {/* Second pulse ring — offset timing */}
+      <Animated.View
+        style={[
+          styles.pulseRing,
+          styles.pulseRing2,
+          {
+            transform: [{ scale: pulseScale }],
+            opacity: pulseOpacity,
+          },
+        ]}
+      />
+
+      {/* Logo */}
+      <Animated.View
+        style={{
+          opacity: logoOpacity,
+          transform: [{ scale: logoScale }],
+          alignItems: 'center',
+        }}
+      >
+        <Image
+          source={require('../assets/images/iconAlerZone-Bg-none.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </Animated.View>
+
+      {/* App name */}
+      <Animated.View style={{ opacity: textOpacity, marginTop: 16, flexDirection: 'row' }}>
+        <Text style={styles.titleWhite}>Alert</Text>
+        <Text style={styles.titleTeal}>Zone</Text>
+      </Animated.View>
+
+      {/* Tagline */}
+      <Animated.Text style={[styles.tagline, { opacity: taglineOpacity }]}>
+        Stay Aware. Stay Safe.
+      </Animated.Text>
+
+      {/* Loading dots at the bottom */}
+      <Animated.View style={[styles.dotsContainer, { opacity: taglineOpacity }]}>
+        <LoadingDots />
+      </Animated.View>
+    </View>
   );
 }
+
+// ── Animated loading dots ────────────────────────────────────────────────────
+function LoadingDots() {
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animateDot = (dot: Animated.Value, delay: number) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0.3,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.delay(600),
+        ])
+      ).start();
+    };
+
+    animateDot(dot1, 0);
+    animateDot(dot2, 200);
+    animateDot(dot3, 400);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      {[dot1, dot2, dot3].map((dot, i) => (
+        <Animated.View key={i} style={[styles.dot, { opacity: dot }]} />
+      ))}
+    </View>
+  );
+}
+
+// ── Styles ───────────────────────────────────────────────────────────────────
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0D1F2D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glowOuter: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    backgroundColor: '#30A89C',
+    opacity: 0.07,
+  },
+  glowInner: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#4CC2D1',
+    opacity: 0.07,
+    alignSelf: 'center',
+    top: 60,
+    left: 60,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    borderWidth: 2,
+    borderColor: '#30A89C',
+  },
+  pulseRing2: {
+    borderColor: '#4CC2D1',
+    borderWidth: 1.5,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+  },
+  logo: {
+    width: 150,
+    height: 150,
+  },
+  titleWhite: {
+    color: '#FFFFFF',
+    fontSize: 42,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  titleTeal: {
+    color: '#30A89C',
+    fontSize: 42,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  tagline: {
+    color: '#7BA8B5',
+    fontSize: 15,
+    fontWeight: '300',
+    letterSpacing: 2.5,
+    marginTop: 8,
+    textTransform: 'uppercase',
+  },
+  dotsContainer: {
+    position: 'absolute',
+    bottom: 80,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: '#30A89C',
+  },
+});

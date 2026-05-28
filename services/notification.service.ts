@@ -4,18 +4,13 @@ import { db } from './firebase';
 import Constants from 'expo-constants';
 import { isRunningInExpoGo } from 'expo';
 
-import getExpoPushTokenAsync from 'expo-notifications/build/getExpoPushTokenAsync';
-import { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications/build/NotificationPermissions';
-import { setNotificationHandler } from 'expo-notifications/build/NotificationsHandler';
-import setNotificationChannelAsync from 'expo-notifications/build/setNotificationChannelAsync';
-import { AndroidImportance } from 'expo-notifications/build/NotificationChannelManager.types';
-
 const isExpoGo = isRunningInExpoGo();
 
 // Only configure notification behavior when running outside Expo Go
 if (!isExpoGo) {
   try {
-    setNotificationHandler({
+    const Notifications = require('expo-notifications');
+    Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
@@ -45,12 +40,14 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
   let token: string | null = null;
 
   try {
+    const Notifications = require('expo-notifications');
+
     // 1. Check and request notification permissions
-    const { status: existingStatus } = await getPermissionsAsync();
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
     if (existingStatus !== 'granted') {
-      const { status } = await requestPermissionsAsync();
+      const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
     
@@ -59,7 +56,21 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
       return null;
     }
 
-    // 2. Get the Expo Push Token using the project ID
+    // 2. Setup Android notification channel FIRST (must exist before token fetch)
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('alertzone-alerts', {
+        name: 'AlertZone Alerts',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#30A89C',
+        sound: 'default',
+        enableLights: true,
+        enableVibrate: true,
+        showBadge: true,
+      });
+    }
+
+    // 3. Get the Expo Push Token using the project ID
     const projectId = 
       Constants.expoConfig?.extra?.eas?.projectId ?? 
       Constants.easConfig?.projectId;
@@ -78,14 +89,14 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
       return null;
     }
 
-    const tokenData = await getExpoPushTokenAsync({
+    const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId,
     });
     
     token = tokenData.data;
     console.log('🔔 Expo Push Token retrieved:', token);
 
-    // 3. Update the user's document in Firestore
+    // 4. Update the user's document in Firestore
     if (token && userId) {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
@@ -96,15 +107,6 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
       console.log('✅ Registered token in Firestore for user:', userId);
     }
 
-    // 4. Setup Android notification channel
-    if (Platform.OS === 'android') {
-      await setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-      });
-    }
   } catch (error) {
     console.error('❌ Error registering for push notifications:', error);
   }

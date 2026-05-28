@@ -90,6 +90,47 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
+## 🚀 Phase 6: Polish & Build Preparation
+
+**Objective:** Ready the app for a real test build with notification verification and a premium launch experience.
+
+- **[2026-05-29] Animated Splash Gate (`app/index.tsx`):**
+    - Replaced the static `index.tsx` with a fully animated branded splash screen.
+    - AlertZone logo (`iconAlerZone-Bg-none.png`) animates in with a fade + spring scale effect.
+    - Dual pulsing teal rings radiate outward from the logo in a looping animation.
+    - Subtle radial glow layers behind the logo for depth.
+    - "AlertZone" wordmark (white + `#30A89C` teal) fades in after the logo.
+    - "STAY AWARE. STAY SAFE." tagline fades in with wide letter spacing.
+    - Three bouncing teal loading dots at the bottom of the screen.
+    - **Smart routing logic**: waits for both auth state resolution AND a minimum 2.2s display time before navigating to the correct screen:
+        - No `hasSeenOnboarding` flag → `/onboarding`
+        - Flag set + not logged in → `/(auth)/loginScreen`
+        - Flag set + logged in → `/(tabs)/home`
+
+- **[2026-05-29] First-Launch Onboarding Gate (`app/onboarding.tsx`):**
+    - Added `AsyncStorage.setItem('hasSeenOnboarding', 'true')` on both "Let's Start" (last slide) and "Skip" button.
+    - Onboarding now only ever appears on a fresh install — returning users always bypass it.
+
+- **[2026-05-29] Notification Service Hardening (`services/notification.service.ts`):**
+    - Moved Android notification channel creation (`alertzone-alerts`) to **before** the push token fetch, ensuring the channel exists at registration time.
+    - Renamed channel to `"AlertZone Alerts"` with teal LED light color `#30A89C`, max importance, vibration, and badge support.
+
+- **[2026-05-29] `app.json` — Notification & Splash Config:**
+    - Added `expo-notifications` plugin with monochrome icon, teal `#30A89C` accent color, and `alertzone-alerts` default channel.
+    - Added Android 13+ `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, and `VIBRATE` permissions.
+    - Splash screen updated to use the AlertZone logo (`iconAlerZone-Bg-none.png`) on `#0D1F2D` dark background (both light and dark modes).
+
+- **[2026-05-29] Dependency Fixes:**
+    - Downgraded `expo-image-manipulator` → `~14.0.8` and `expo-image-picker` → `~17.0.11` to match SDK 54.
+    - Updated `expo` → `~54.0.34`, `expo-linking` → `~8.0.12`, `expo-web-browser` → `~15.0.11`.
+    - All 18/18 `expo-doctor` checks now pass.
+
+- **[2026-05-29] EAS Cloud Build:**
+    - Committed on branch `test-build-2`.
+    - Triggered EAS preview build for Android (build ID: `d520c667-5394-4521-a4db-a666d68c7eba`).
+
+---
+
 ## 📈 Summary of Technical Stack Used
 - **Frontend:** React Native (Expo SDK 54+)
 - **Navigation:** Expo Router (Tabs-based)
@@ -97,7 +138,8 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 - **Storage:** Firebase Cloud Storage (Images)
 - **Location:** Expo Location + React Native Maps (Google Maps Provider)
 - **Image Processing:** Expo Image Manipulator
+- **Push Notifications:** Expo Notifications + Expo Push Service (FCM)
 
 ---
 
-*Last Updated: 2026-05-24*
+*Last Updated: 2026-05-29*

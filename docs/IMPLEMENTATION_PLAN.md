@@ -163,20 +163,22 @@
 **Goal**: Implement push notifications for report status changes.
 
 ### Task 3.1: FCM Setup
-- [ ] Install `expo-notifications`
-- [ ] Create `services/notification.service.ts` — FCM token registration
-- [ ] Store FCM token in user's Firestore document
-- [ ] Create `hooks/useNotifications.ts` — permission request + token management
+- [x] Install `expo-notifications` ✅
+- [x] Add `expo-notifications` plugin to `app.json` with icon, color, and default channel ✅
+- [x] Add Android `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `VIBRATE` permissions ✅
+- [x] Create `services/notification.service.ts` — Android channel setup (`alertzone-alerts`) before token fetch, FCM token registration ✅
+- [x] Store FCM/Expo Push Token in user's Firestore document (`expoPushToken` + `fcmToken`) ✅
+- [x] Create `hooks/useNotifications.ts` — permission request, token registration, foreground + tap listeners ✅
 
 ### Task 3.2: Status Change Notifications
 - [ ] Create Firebase Cloud Function: on report status change → send push notification
 - [ ] Notification payload: report title, new status, reference ID
-- [ ] Handle notification tap → navigate to report detail
+- [x] Handle notification tap → navigate to report detail (map tab with reportId param) ✅
 
 ### Task 3.3: In-App Notification Center
-- [ ] Create `notifications` Firestore collection
-- [ ] Build notification list screen
-- [ ] Wire notification bell badge to unread count
+- [x] Build notification list screen (`app/notifications.tsx`) ✅
+- [x] Wire notification bell badge to unread count ✅
+- [ ] Create `notifications` Firestore collection (currently using existing structure)
 - [ ] Commit: `feat: add push notifications for report updates`
 
 ---

@@ -1,7 +1,7 @@
 # Current Status — AlertZone Mobile App
 > **Full Log:** [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)
 
-> **Last Updated:** 2026-05-16
+> **Last Updated:** 2026-05-29
 >
 > This document tracks what is done, what is broken, and what remains. Agents MUST read this before starting work.
 
@@ -10,14 +10,14 @@
 ## Overall Progress
 
 | Phase | Status | Notes |
-|---|---|---|
+|---|---|---------|
 | Phase 0: Architecture Cleanup | 🔴 Not Started | Planned next |
 | Phase 1: Core Firebase Integration | 🟡 In Progress | Auth ✅, Report submit ✅, Map live ✅, History live ✅ |
 | Phase 2: Report System | 🟢 Done | Submit + track + images + location search working ✅ |
 | Phase 3: Community Features | 🔴 Not Started | Upvoting UI exists but not functional |
-| Phase 4: Notifications | 🟢 Done | Expo push tokens + in-app Notification Center ✅ |
+| Phase 4: Notifications | 🟢 Done | expo-notifications plugin ✅, push tokens ✅, foreground listeners ✅, in-app Notification Center ✅ |
 | Phase 5: Badge System | 🔴 Not Started | Static badges shown in profile |
-| Phase 6: Polish & Launch | 🔴 Not Started | — |
+| Phase 6: Polish & Launch | 🟡 In Progress | Animated splash gate ✅, smart first-launch routing ✅, onboarding seen flag ✅ |
 
 ---
 
@@ -48,7 +48,10 @@
 - [x] Tab navigator with 5 tabs (Home, Map, Report, History, Profile)
 - [x] Custom floating tab bar with FAB for Report
 - [x] Tab bar hides on scroll (ScrollProvider)
-- [x] Onboarding 3-step carousel
+- [x] Onboarding 3-step carousel (only shown on first install)
+- [x] **Animated splash gate** (`app/index.tsx`) — AlertZone logo with pulsing teal rings, fade+scale animation, loading dots
+- [x] **Smart first-launch routing** — detects `hasSeenOnboarding` (AsyncStorage) + auth state to route: onboarding → login → home
+- [x] Onboarding `hasSeenOnboarding` flag set on both Skip and Let's Start
 
 ### UI/UX
 - [x] Consistent dark theme across all screens
@@ -125,7 +128,7 @@
 ### Firebase Services
 - [ ] `report.service.ts` — Firestore CRUD for reports
 - [ ] `storage.service.ts` — Image/video upload to Firebase Storage
-- [x] `notification.service.ts` — Expo push token integration ✅
+- [x] `notification.service.ts` — Expo push token registration, Android channel setup (`alertzone-alerts`), Firestore token save/clear ✅
 - [ ] `user.service.ts` — Separated user operations
 
 ### Hooks

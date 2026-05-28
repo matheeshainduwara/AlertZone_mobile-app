@@ -3,6 +3,7 @@ import { View, Text, Image, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { cssInterop } from 'nativewind';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const ONBOARDING_DATA = [
@@ -31,12 +32,22 @@ export default function Onboarding() {
   const router = useRouter();
   const isLastScreen = currentIndex === ONBOARDING_DATA.length - 1;
 
-  const handleNext = () => {
+  const markOnboardingDone = async () => {
+    await AsyncStorage.setItem('hasSeenOnboarding', 'true');
+  };
+
+  const handleNext = async () => {
     if (isLastScreen) {
+      await markOnboardingDone();
       router.push("/(auth)/signupScreen");
     } else {
       setCurrentIndex(currentIndex + 1);
     }
+  };
+
+  const handleSkip = async () => {
+    await markOnboardingDone();
+    router.push("/(auth)/loginScreen");
   };
 
   return (
@@ -46,7 +57,7 @@ export default function Onboarding() {
         {/* Skip Button */}
         <Pressable 
           className="absolute top-14 right-4 border border-[#30A89C] px-4 py-1 rounded-full" 
-          onPress={() => router.push("/(auth)/loginScreen")}
+          onPress={handleSkip}
         >
           <Text className="text-[#30A89C] text-lg ">Skip</Text>
         </Pressable>
@@ -82,7 +93,7 @@ export default function Onboarding() {
           onPress={handleNext}
         >
           <Text className="text-white text-xl font-bold text-center">
-            {isLastScreen ? "Let's Start" : "NEXT"}
+            {isLastScreen ? "Let's Start" : "Next"}
           </Text>
         </Pressable>
       </View>
