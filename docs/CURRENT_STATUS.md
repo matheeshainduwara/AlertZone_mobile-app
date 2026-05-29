@@ -1,7 +1,7 @@
 # Current Status — AlertZone Mobile App
 > **Full Log:** [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)
 
-> **Last Updated:** 2026-05-29
+> **Last Updated:** 2026-05-29 (Pull-to-Refresh · Auto-Archive · Archive Screen)
 >
 > This document tracks what is done, what is broken, and what remains. Agents MUST read this before starting work.
 
@@ -69,9 +69,10 @@
 
 ### Home Screen (`home.tsx`)
 - [ ] Browse Categories — hardcoded array, not from Firestore
-- [ ] Nearby Issues — hardcoded `NEARBY_ISSUES` array with stock images
-- [ ] Latest Updates — hardcoded `LATEST_UPDATES` array
+- [x] Nearby Issues — live Firestore subscription filtered to user's alert radius ✅
+- [x] Latest Updates — live Firestore subscription ✅
 - [x] Notification bell badge — wired to real Firestore unread count ✅
+- [x] **Pull-to-Refresh** — re-fetches GPS location and refreshes nearby issues + updates ✅
 
 ### Map Screen (`map.tsx`) ✅ LIVE
 - [x] Issue pins — live Firestore subscription (`onSnapshot`) ✅
@@ -115,6 +116,17 @@
 - [x] Status timeline with ASSIGNED stage ✅
 - [x] Real-time updates — modal reflects status changes instantly ✅
 - [x] Human-readable date formatting ✅
+- [x] **Auto-Archive** — RESOLVED reports older than 24h are automatically set to `isArchived: true` in Firestore via batch write ✅
+- [x] Archived reports excluded from all tab filters and counts ✅
+- [x] **Archive button** in header — navigates to the dedicated Archive screen ✅
+
+### Archive Screen (`archive.tsx`) ✅ NEW
+- [x] Live Firestore subscription filtered to `isArchived == true` for the current user ✅
+- [x] **Category filter chips** — All Categories + 6 specific categories ✅
+- [x] **Date filter chips** — All Time / Today / Last 7 Days / Last 30 Days / Custom Range ✅
+- [x] **Custom date range** — pure React Native calendar modal, no third-party date picker ✅
+- [x] Report detail modal with status timeline and resolution notes ✅
+- [x] Informative empty state explaining the auto-archive behaviour ✅
 
 ### Profile Screen (`profile.tsx`)
 - [ ] Badges — hardcoded `BADGES` array, not computed from user activity

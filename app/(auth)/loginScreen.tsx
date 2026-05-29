@@ -126,13 +126,13 @@ export default function LoginScreen() {
           Toast.show({
             type: 'success',
             text1: 'Login Successful',
-            text2: `Welcome back, ${userData.fullName}!`,
+            text2: `Welcome, ${userData.fullName}!`,
           });
         } else {
           Toast.show({
             type: 'success',
             text1: 'Login Successful',
-            text2: 'Welcome back!',
+            text2: 'Welcome!',
           });
         }
         setTimeout(() => {
@@ -265,7 +265,7 @@ export default function LoginScreen() {
                 className="w-24 h-24"
                 resizeMode="contain"
               />
-              <Text className="text-white text-3xl font-bold mt-4">Welcome Back!</Text>
+              <Text className="text-white text-3xl font-bold mt-4">Welcome!</Text>
               <Text className="text-gray-400 text-center mt-2">
                 Log in to continue making your{"\n"}community safer.
               </Text>

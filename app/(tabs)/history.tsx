@@ -21,6 +21,8 @@ import {
   where,
   orderBy,
   onSnapshot,
+  writeBatch,
+  doc,
 } from 'firebase/firestore';
 import { Image } from 'react-native';
 
@@ -33,6 +35,7 @@ interface Report {
   id: string;
   title: string;
   category: string;
+  categoryId: string;
   categoryIcon: string;
   categoryColor: string;
   description: string;
@@ -42,7 +45,9 @@ interface Report {
   location: { address: string; latitude: number; longitude: number };
   resolutionNote?: string;
   createdAt: any;
-  statusHistory: Array<{ status: string; changedAt: string; changedBy: string; note?: string }>;
+  updatedAt?: any;
+  isArchived?: boolean;
+  statusHistory: Array<{ status: string; changedAt: any; changedBy: string; note?: string }>;
 }
 
 // ─────────────────────────────────────────────
@@ -302,6 +307,44 @@ function ReportCard({ report, onPress }: { report: Report; onPress: () => void }
 }
 
 // ─────────────────────────────────────────────
+// Resolution & Archive Helpers
+// ─────────────────────────────────────────────
+const getResolvedTime = (report: Report): Date | null => {
+  if (report.status !== 'RESOLVED') return null;
+
+  if (report.statusHistory && Array.isArray(report.statusHistory)) {
+    const resolvedEntry = report.statusHistory.find(h => h.status === 'RESOLVED');
+    if (resolvedEntry && resolvedEntry.changedAt) {
+      return resolvedEntry.changedAt.toDate ? resolvedEntry.changedAt.toDate() : new Date(resolvedEntry.changedAt);
+    }
+  }
+
+  if (report.updatedAt) {
+    return report.updatedAt.toDate ? report.updatedAt.toDate() : new Date(report.updatedAt);
+  }
+
+  if (report.createdAt) {
+    return report.createdAt.toDate ? report.createdAt.toDate() : new Date(report.createdAt);
+  }
+
+  return null;
+};
+
+const isEligibleForArchive = (report: Report): boolean => {
+  if (report.status !== 'RESOLVED') return false;
+  if (report.isArchived === true) return false;
+
+  const resolvedTime = getResolvedTime(report);
+  if (!resolvedTime) return false;
+
+  const now = new Date();
+  const diffMs = now.getTime() - resolvedTime.getTime();
+  const hours24 = 24 * 60 * 60 * 1000;
+
+  return diffMs >= hours24;
+};
+
+// ─────────────────────────────────────────────
 // Main History Screen
 // ─────────────────────────────────────────────
 export default function HistoryScreen() {
@@ -352,7 +395,36 @@ export default function HistoryScreen() {
     }
   }, [reports]);
 
+  // ── Auto-archiving resolved reports after 24 hours ──
+  useEffect(() => {
+    if (reports.length === 0) return;
+
+    const toArchive = reports.filter(isEligibleForArchive);
+    if (toArchive.length === 0) return;
+
+    const archiveReports = async () => {
+      try {
+        const batch = writeBatch(db);
+        toArchive.forEach((report) => {
+          const reportRef = doc(db, 'reports', report.id);
+          batch.update(reportRef, {
+            isArchived: true,
+            updatedAt: new Date()
+          });
+        });
+        await batch.commit();
+        console.log(`[AutoArchive] Successfully archived ${toArchive.length} reports.`);
+      } catch (err) {
+        console.error('[AutoArchive] Error auto-archiving reports:', err);
+      }
+    };
+
+    archiveReports();
+  }, [reports]);
+
   const filtered = reports.filter((r) => {
+    if (r.isArchived === true) return false;
+
     if (activeFilter === 'All')      return true;
     if (activeFilter === 'Pending')  return r.status === 'PENDING';
     if (activeFilter === 'Fixing')   return r.status === 'FIXING' || r.status === 'ASSIGNED';
@@ -362,11 +434,12 @@ export default function HistoryScreen() {
   });
 
   const countFor = (tab: FilterTab): number => {
-    if (tab === 'All')      return reports.length;
-    if (tab === 'Pending')  return reports.filter((r) => r.status === 'PENDING').length;
-    if (tab === 'Fixing')   return reports.filter((r) => r.status === 'FIXING' || r.status === 'ASSIGNED').length;
-    if (tab === 'Resolved') return reports.filter((r) => r.status === 'RESOLVED').length;
-    if (tab === 'Rejected') return reports.filter((r) => r.status === 'REJECTED').length;
+    const activeReports = reports.filter((r) => r.isArchived !== true);
+    if (tab === 'All')      return activeReports.length;
+    if (tab === 'Pending')  return activeReports.filter((r) => r.status === 'PENDING').length;
+    if (tab === 'Fixing')   return activeReports.filter((r) => r.status === 'FIXING' || r.status === 'ASSIGNED').length;
+    if (tab === 'Resolved') return activeReports.filter((r) => r.status === 'RESOLVED').length;
+    if (tab === 'Rejected') return activeReports.filter((r) => r.status === 'REJECTED').length;
     return 0;
   };
 
@@ -388,8 +461,20 @@ export default function HistoryScreen() {
             />
             <Text className="text-white text-xl font-bold tracking-tight">My Reports</Text>
           </View>
-          <View className="bg-[#1E3347] px-3 py-1.5 rounded-full">
-            <Text className="text-[#4CC2D1] text-xs font-bold">{reports.length} Total</Text>
+          <View className="flex-row items-center gap-2">
+            <Pressable
+              onPress={() => router.push('/archive' as any)}
+              className="bg-[#1E3347] px-3 py-1.5 rounded-full flex-row items-center gap-1.5 active:opacity-75"
+              style={{ borderWidth: 1, borderColor: '#2D4F5C' }}
+            >
+              <Ionicons name="archive-outline" size={14} color="#4CC2D1" />
+              <Text className="text-[#4CC2D1] text-xs font-bold">Archive</Text>
+            </Pressable>
+            <View className="bg-[#111E27] px-3 py-1.5 rounded-full" style={{ borderWidth: 1, borderColor: '#1E3347' }}>
+              <Text className="text-gray-400 text-xs font-bold">
+                {reports.filter(r => r.isArchived !== true).length}
+              </Text>
+            </View>
           </View>
         </View>
 

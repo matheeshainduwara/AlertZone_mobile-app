@@ -131,6 +131,36 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
+## 🔄 Session: Pull-to-Refresh, Auto-Archive & Archive Screen
+**Date:** 2026-05-29
+
+- **[2026-05-29] Home Screen — Pull-to-Refresh (`home.tsx`):**
+    - Added `RefreshControl` to the main `ScrollView` with brand teal `#4CC2D1` spinner colour.
+    - `handleRefresh()` re-requests foreground location permission, fetches the latest GPS coordinates, and waits a minimum 800ms for a smooth UX before releasing the spinner.
+    - Refreshing `userLocation` automatically triggers the distance calculation `useEffect`, re-computing nearby issues and latest updates.
+
+- **[2026-05-29] My Reports — Auto-Archiving (`history.tsx`):**
+    - Added `writeBatch` + `doc` Firestore imports and extended the `Report` interface with `categoryId`, `updatedAt`, and `isArchived` fields.
+    - Added `getResolvedTime(report)` helper: inspects `statusHistory` for the `RESOLVED` entry first, then falls back to `updatedAt` / `createdAt`.
+    - Added `isEligibleForArchive(report)` helper: checks `status === 'RESOLVED'`, `isArchived !== true`, and that ≥24 hours have elapsed since resolution.
+    - Added a `useEffect` that commits a Firestore `writeBatch` to set `isArchived: true` on any eligible reports whenever the reports list updates.
+    - Updated `filtered` array and `countFor()` to exclude archived reports from all filter tabs and count badges.
+    - Added a teal **Archive** pill button (with icon) to the header that routes to `/archive`.
+
+- **[2026-05-29] Archive Screen (`app/archive.tsx`) — New screen:**
+    - Dedicated `/archive` route with a premium dark `LinearGradient` layout.
+    - Real-time Firestore subscription: `uid == user.uid` AND `isArchived == true`, ordered by `createdAt DESC`.
+    - Category filter chips: All + 6 report categories with icons and brand colours.
+    - Date filter chips: All Time, Today, Last 7 Days, Last 30 Days, Custom Range.
+    - Custom date range picker: pure React Native `CalendarModal` with month navigation — no third-party date picker required.
+    - Full `ReportDetailModal` with status timeline, location, description, and resolution note.
+    - Informative empty state describing the auto-archive behaviour.
+
+- **[2026-05-29] Login Screen (`loginScreen.tsx`):**
+    - Changed heading and toast copy from "Welcome Back!" → "Welcome!".
+
+---
+
 ## 📈 Summary of Technical Stack Used
 - **Frontend:** React Native (Expo SDK 54+)
 - **Navigation:** Expo Router (Tabs-based)
@@ -142,4 +172,4 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
-*Last Updated: 2026-05-29*
+*Last Updated: 2026-05-29 — Pull-to-Refresh · Auto-Archive · Archive Screen*
