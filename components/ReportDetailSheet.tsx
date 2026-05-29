@@ -41,6 +41,7 @@ type ReportStatus = 'PENDING' | 'ASSIGNED' | 'FIXING' | 'RESOLVED' | 'REJECTED';
 
 interface Report {
   id: string;
+  uid: string;
   title: string;
   category: string;
   categoryId: string;
@@ -269,6 +270,32 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
         batch.set(upvoteRef, { uid: user.uid, createdAt: new Date() });
         batch.update(reportRef, { upvoteCount: increment(1) });
 
+        // 1. Notify admin of the upvote
+        const notifAdminRef = doc(collection(db, 'notifications'));
+        batch.set(notifAdminRef, {
+          recipientUid: 'admin',
+          type: 'upvote',
+          title: 'Report Upvoted',
+          body: `${profile?.fullName || 'A citizen'} upvoted the report "${report.title}".`,
+          reportId: report.id,
+          isRead: false,
+          createdAt: serverTimestamp(),
+        });
+
+        // 2. Notify report author of the upvote (if not the author upvoting)
+        if (report.uid !== user.uid) {
+          const notifAuthorRef = doc(collection(db, 'notifications'));
+          batch.set(notifAuthorRef, {
+            recipientUid: report.uid,
+            type: 'upvote',
+            title: 'Your Report Was Upvoted!',
+            body: `${profile?.fullName || 'A citizen'} upvoted your report "${report.title}".`,
+            reportId: report.id,
+            isRead: false,
+            createdAt: serverTimestamp(),
+          });
+        }
+
         if (commentText && commentText.trim()) {
           const commentsRef = collection(db, 'reports', report.id, 'comments');
           const commentDocRef = doc(commentsRef);
@@ -278,6 +305,32 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
             upvoteCount: 0,
             createdAt: serverTimestamp(),
           });
+
+          // 3. Notify admin of the comment
+          const notifCommentAdminRef = doc(collection(db, 'notifications'));
+          batch.set(notifCommentAdminRef, {
+            recipientUid: 'admin',
+            type: 'comment',
+            title: 'New Report Comment',
+            body: `${profile?.fullName || 'A citizen'} commented on report "${report.title}": "${commentText.trim()}"`,
+            reportId: report.id,
+            isRead: false,
+            createdAt: serverTimestamp(),
+          });
+
+          // 4. Notify report author of the comment (if not the author commenting)
+          if (report.uid !== user.uid) {
+            const notifCommentAuthorRef = doc(collection(db, 'notifications'));
+            batch.set(notifCommentAuthorRef, {
+              recipientUid: report.uid,
+              type: 'comment',
+              title: 'New Comment on Your Report',
+              body: `${profile?.fullName || 'A citizen'} commented on your report: "${commentText.trim()}"`,
+              reportId: report.id,
+              isRead: false,
+              createdAt: serverTimestamp(),
+            });
+          }
         }
 
         await batch.commit();
@@ -308,12 +361,46 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
     if (!user || !report || !newComment.trim() || isPostingComment) return;
     setIsPostingComment(true);
     try {
-      await addDoc(collection(db, 'reports', report.id, 'comments'), {
+      const batch = writeBatch(db);
+      const commentsRef = collection(db, 'reports', report.id, 'comments');
+      const commentDocRef = doc(commentsRef);
+      const commentBody = newComment.trim();
+
+      // 1. Add comment
+      batch.set(commentDocRef, {
         uid: user.uid,
-        body: newComment.trim(),
+        body: commentBody,
         upvoteCount: 0,
         createdAt: serverTimestamp(),
       });
+
+      // 2. Notify admin
+      const notifAdminRef = doc(collection(db, 'notifications'));
+      batch.set(notifAdminRef, {
+        recipientUid: 'admin',
+        type: 'comment',
+        title: 'New Report Comment',
+        body: `${profile?.fullName || 'A citizen'} commented on report "${report.title}": "${commentBody}"`,
+        reportId: report.id,
+        isRead: false,
+        createdAt: serverTimestamp(),
+      });
+
+      // 3. Notify report author (if not the author commenting)
+      if (report.uid !== user.uid) {
+        const notifAuthorRef = doc(collection(db, 'notifications'));
+        batch.set(notifAuthorRef, {
+          recipientUid: report.uid,
+          type: 'comment',
+          title: 'New Comment on Your Report',
+          body: `${profile?.fullName || 'A citizen'} commented on your report: "${commentBody}"`,
+          reportId: report.id,
+          isRead: false,
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
       setNewComment('');
 
       // Give feedback
@@ -337,7 +424,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
       });
     }
     setIsPostingComment(false);
-  }, [user, report, newComment, isPostingComment]);
+  }, [user, report, newComment, isPostingComment, profile]);
 
   // ── Show on Map ──
   const handleShowOnMap = useCallback(() => {

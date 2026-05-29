@@ -765,6 +765,21 @@ export default function ReportScreen() {
         console.error('❌ Points update failed:', err);
       }
 
+      // 4. Create admin notification log
+      try {
+        await addDoc(collection(db, 'notifications'), {
+          recipientUid: 'admin',
+          type: 'status_change',
+          title: 'New Issue Received',
+          body: `A new ${selectedCategory.label} Incident has been reported by ${profile.fullName} in ${locationAddress.split(',').slice(-2).join(',').trim() || 'unknown region'}.`,
+          reportId: docRef.id,
+          isRead: false,
+          createdAt: serverTimestamp(),
+        });
+      } catch (err) {
+        console.error('❌ Failed to create admin notification log:', err);
+      }
+
       setUploadStatusText('Report submitted successfully!');
       setSubmittedRefId(docRef.id);
     } catch (e: any) {

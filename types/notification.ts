@@ -1,4 +1,4 @@
-export type NotificationType = 'status_change' | 'upvote' | 'badge_earned' | 'system';
+export type NotificationType = 'status_change' | 'upvote' | 'badge_earned' | 'system' | 'comment';
 
 export interface AppNotification {
   id: string;

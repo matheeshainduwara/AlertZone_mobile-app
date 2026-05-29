@@ -39,6 +39,7 @@ const TYPE_META: Record<
   upvote: { color: '#60A5FA', bg: 'rgba(96, 165, 250, 0.1)', icon: 'arrow-up-circle' },
   badge_earned: { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.1)', icon: 'trophy' },
   system: { color: '#E05C5C', bg: 'rgba(224, 92, 92, 0.1)', icon: 'alert-circle' },
+  comment: { color: '#A78BFA', bg: 'rgba(167, 139, 250, 0.1)', icon: 'chatbubble-ellipses' },
 };
 
 // ─────────────────────────────────────────────
@@ -294,6 +295,7 @@ export default function NotificationsScreen() {
             { id: 'all', label: 'All' },
             { id: 'status_change', label: 'Reports' },
             { id: 'upvote', label: 'Upvotes' },
+            { id: 'comment', label: 'Comments' },
             { id: 'badge_earned', label: 'Rewards' },
             { id: 'system', label: 'System' },
           ]}
