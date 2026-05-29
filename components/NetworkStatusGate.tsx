@@ -28,7 +28,7 @@ export default function NetworkStatusGate() {
     setChecking(true);
     try {
       const state = await NetInfo.fetch();
-      const connected = state.isConnected ?? false;
+      const connected = state.isConnected === true && state.isInternetReachable !== false;
       setIsConnected(connected);
       if (connected) {
         Toast.show({
@@ -59,7 +59,7 @@ export default function NetworkStatusGate() {
   // Monitor Network & Listen to test triggers
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener((state) => {
-      const connected = state.isConnected ?? true;
+      const connected = state.isConnected === true && state.isInternetReachable !== false;
       setIsConnected(connected);
     });
 
