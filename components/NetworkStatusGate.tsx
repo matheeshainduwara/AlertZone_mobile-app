@@ -18,10 +18,13 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = 240;
 
 export default function NetworkStatusGate() {
-  const [isConnected, setIsConnected] = useState<boolean | null>(true);
+  const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [wasOffline, setWasOffline] = useState(false);
   const [visible, setVisible] = useState(false);
   const [checking, setChecking] = useState(false);
+  // Debounce timer ref: we wait 800ms before declaring offline to avoid
+  // false positives when isInternetReachable is still resolving (null)
+  const offlineTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleManualCheck = async () => {
     if (checking) return;
@@ -58,9 +61,39 @@ export default function NetworkStatusGate() {
 
   // Monitor Network & Listen to test triggers
   useEffect(() => {
+    // Initial check on mount — catch users who open the app while offline
+    NetInfo.fetch().then((state) => {
+      if (state.isConnected === false) {
+        setIsConnected(false);
+      } else {
+        setIsConnected(true);
+      }
+    });
+
     const unsubscribe = NetInfo.addEventListener((state) => {
-      const connected = state.isConnected === true && state.isInternetReachable !== false;
-      setIsConnected(connected);
+      if (offlineTimer.current) {
+        clearTimeout(offlineTimer.current);
+        offlineTimer.current = null;
+      }
+
+      if (state.isConnected === false) {
+        // Definitely offline — show gate after 800ms debounce to avoid
+        // false triggers while isInternetReachable is still null
+        offlineTimer.current = setTimeout(() => {
+          setIsConnected(false);
+        }, 800);
+      } else if (state.isConnected === true && state.isInternetReachable !== false) {
+        // Fully connected and reachability confirmed
+        setIsConnected(true);
+      } else if (state.isConnected === true && state.isInternetReachable === null) {
+        // isConnected but reachability not yet determined — stay as-is,
+        // don't flip offline. Another event will arrive once resolved.
+      } else if (state.isConnected === true && state.isInternetReachable === false) {
+        // Connected to network but no internet (e.g. captive portal)
+        offlineTimer.current = setTimeout(() => {
+          setIsConnected(false);
+        }, 800);
+      }
     });
 
     const testSubscription = DeviceEventEmitter.addListener('testOfflineGate', () => {
@@ -72,6 +105,7 @@ export default function NetworkStatusGate() {
     return () => {
       unsubscribe();
       testSubscription.remove();
+      if (offlineTimer.current) clearTimeout(offlineTimer.current);
     };
   }, []);
 
