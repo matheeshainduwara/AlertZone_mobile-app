@@ -357,7 +357,7 @@ const validatePassword = (password:string) => {
                   />
                 </View>
                 <Pressable onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#30A89C" />
+                  <Ionicons name={showPassword ? "eye-outline": "eye-off-outline"} size={20} color="#30A89C" />
                 </Pressable>
               </View>
 

@@ -275,8 +275,8 @@ const styles = StyleSheet.create({
     borderRadius: 100,
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 120,
+    height: 120,
   },
   titleWhite: {
     color: '#FFFFFF',
@@ -292,10 +292,10 @@ const styles = StyleSheet.create({
   },
   tagline: {
     color: '#7BA8B5',
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: '300',
-    letterSpacing: 2.5,
-    marginTop: 8,
+    letterSpacing: 1,
+    marginTop: 5,
     textTransform: 'uppercase',
   },
   dotsContainer: {
