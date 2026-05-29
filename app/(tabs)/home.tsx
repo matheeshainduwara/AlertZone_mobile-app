@@ -15,7 +15,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScrollContext } from '../../config/tabBarScrollContext';
 import * as Location from 'expo-location';
-import { collection, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { collection, collectionGroup, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import ReportDetailSheet from '../../components/ReportDetailSheet';
 import { db } from '../../services/firebase';
 import { useAuth } from '../../config/authConfig';
 
@@ -209,6 +210,8 @@ export default function HomeScreen() {
   const [latestUpdates, setLatestUpdates] = useState<ReportPin[]>([]);
   const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+  const [upvotedCount, setUpvotedCount] = useState(0);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -296,6 +299,22 @@ export default function HomeScreen() {
     return unsub;
   }, [user?.uid]);
 
+  // 2.6. Fetch count of reports this user has upvoted
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(
+      collectionGroup(db, 'upvotes'),
+      where('uid', '==', user.uid),
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setUpvotedCount(snap.docs.length);
+    }, (err) => {
+      // collectionGroup may need an index — silently ignore in dev
+      console.warn('Upvoted count error (index may be needed):', err);
+    });
+    return unsub;
+  }, [user?.uid]);
+
   // 3. Process distances when data or location updates
   useEffect(() => {
     if (reports.length === 0) {
@@ -333,8 +352,8 @@ export default function HomeScreen() {
     setLoading(false);
   }, [reports, userLocation, radiusKm]);
 
-  const navigateToMap = (item: ReportPin) => {
-    router.push(`/(tabs)/map?id=${item.id}&lat=${item.latitude}&lng=${item.longitude}`);
+  const openReportDetail = (item: ReportPin) => {
+    setSelectedReportId(item.id);
   };
 
   return (
@@ -458,7 +477,7 @@ export default function HomeScreen() {
               </View>
             ) : nearbyIssues.length > 0 ? (
               nearbyIssues.map(item => (
-                <NearbyCard key={item.id} item={item} onPress={() => navigateToMap(item)} />
+                <NearbyCard key={item.id} item={item} onPress={() => openReportDetail(item)} />
               ))
             ) : (
               <View style={{ width: 300 }}>
@@ -493,7 +512,7 @@ export default function HomeScreen() {
               <View className="px-4">
                 {latestUpdates.map((item, index) => (
                   <View key={item.id}>
-                    <UpdateRow item={item} onPress={() => navigateToMap(item)} />
+                    <UpdateRow item={item} onPress={() => openReportDetail(item)} />
                     {index < latestUpdates.length - 1 && (
                       <View className="h-px bg-[#1E3347]" />
                     )}
@@ -512,7 +531,56 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* ── 6. My Upvoted Reports ── */}
+        <View className="px-5 mt-7">
+          <SectionHeader title="My Community Upvotes" />
+          <Pressable
+            onPress={() => router.push('/upvoted-reports' as any)}
+            className="active:opacity-80"
+          >
+            <View
+              style={{
+                backgroundColor: '#111E27',
+                borderRadius: 20,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: '#1E3A44',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 50, height: 50, borderRadius: 25,
+                  backgroundColor: '#0D2A35',
+                  alignItems: 'center', justifyContent: 'center',
+                  borderWidth: 1, borderColor: '#4CC2D1',
+                }}
+              >
+                <Ionicons name="arrow-up-circle" size={26} color="#4CC2D1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>My Upvoted Reports</Text>
+                <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 2 }}>
+                  Reports you've supported in your community
+                </Text>
+              </View>
+              <View style={{ alignItems: 'center' }}>
+                <Text style={{ color: '#4CC2D1', fontWeight: '800', fontSize: 20 }}>{upvotedCount}</Text>
+                <Text style={{ color: '#5A7D8A', fontSize: 10 }}>upvoted</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#2D4F5C" />
+            </View>
+          </Pressable>
+        </View>
+
       </ScrollView>
+
+      <ReportDetailSheet
+        reportId={selectedReportId}
+        onClose={() => setSelectedReportId(null)}
+      />
     </LinearGradient>
   );
 }

@@ -409,6 +409,7 @@ Firestore composite indexes needed for queries:
 | `reports` | `isArchived` ASC, `status` ASC, `createdAt` DESC | Admin: active reports |
 | `notifications` | `recipientUid` ASC, `createdAt` DESC | User's notifications |
 | `notifications` | `recipientUid` ASC, `isRead` ASC, `createdAt` DESC | Unread notifications |
+| `upvotes` (Collection Group) | `uid` ASC | Fetch user's upvoted reports |
 
 ---
 
@@ -446,6 +447,20 @@ service cloud.firestore {
         allow create: if request.auth != null && request.auth.uid == upvoteUserId;
         allow delete: if request.auth != null && request.auth.uid == upvoteUserId;
       }
+
+      // ── Comments subcollection ──
+      match /comments/{commentId} {
+        allow read: if request.auth != null;
+        allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+        allow update: if request.auth != null && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvoteCount']);
+      }
+    }
+
+    // ── Upvotes collectionGroup ──
+    match /{path=**}/upvotes/{upvoteUserId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == upvoteUserId;
+      allow delete: if request.auth != null && request.auth.uid == upvoteUserId;
     }
 
     // ── Notifications ──

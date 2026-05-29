@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../config/authConfig';
 import { db } from '../../services/firebase';
+import ReportDetailSheet from '../../components/ReportDetailSheet';
 
 // ─────────────────────────────────────────────
 // Types
@@ -100,6 +101,7 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
   const [radiusKm, setRadiusKm] = useState(5);
   const [isListOpen, setIsListOpen] = useState(false);
+  const [detailReportId, setDetailReportId] = useState<string | null>(null);
 
   // ── Sync radius with profile ──
   useEffect(() => {
@@ -465,8 +467,13 @@ export default function MapScreen() {
       </View>
 
       {selectedPin && (
+        <Pressable
+          onPress={() => setDetailReportId(selectedPin.id)}
+          style={{
+            position: 'absolute', bottom: 110, left: 16, right: 16,
+          }}
+        >
         <View style={{
-          position: 'absolute', bottom: 110, left: 16, right: 16,
           backgroundColor: '#111E27', borderRadius: 20, padding: 16,
           borderWidth: 1, borderColor: '#1E3347',
           shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
@@ -482,9 +489,12 @@ export default function MapScreen() {
                 {selectedPin.status}
               </Text>
             </View>
-            <Pressable onPress={() => setSelectedPin(null)} className="active:opacity-70 p-1">
-              <Ionicons name="close" size={20} color="#3A6070" />
-            </Pressable>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={{ color: '#5A7D8A', fontSize: 11 }}>Tap for full details</Text>
+              <Pressable onPress={(e) => { e.stopPropagation?.(); setSelectedPin(null); }} className="active:opacity-70 p-1">
+                <Ionicons name="close" size={20} color="#3A6070" />
+              </Pressable>
+            </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{
@@ -511,6 +521,7 @@ export default function MapScreen() {
             </Text>
           )}
         </View>
+        </Pressable>
       )}
 
       {!selectedPin && (
@@ -527,6 +538,11 @@ export default function MapScreen() {
           </Text>
         </View>
       )}
+
+      <ReportDetailSheet
+        reportId={detailReportId}
+        onClose={() => setDetailReportId(null)}
+      />
     </View>
   );
 }
