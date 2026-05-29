@@ -1,6 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { doc, updateDoc } from 'firebase/firestore';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { doc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { deleteObject, ref as storageRef } from 'firebase/storage';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -14,39 +18,35 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location';
-import * as ImagePicker from 'expo-image-picker';
-import { ref as storageRef, deleteObject } from 'firebase/storage';
-import { storage } from '../../services/firebase';
-import { compressImage, isUnderSizeLimit, uploadFile } from '../../services/storage.service';
-import { useAuth } from '../../config/authConfig';
-import { useScrollContext } from '../../config/tabBarScrollContext';
-import { db } from '../../services/firebase';
-import { sriLankaGeographics } from '../../config/sriLankaRegions';
 import SelectionModal from '../../components/SelectionModal';
+import { useAuth } from '../../config/authConfig';
+import { sriLankaGeographics } from '../../config/sriLankaRegions';
+import { useScrollContext } from '../../config/tabBarScrollContext';
+import { db, storage } from '../../services/firebase';
+import { compressImage, isUnderSizeLimit, uploadFile } from '../../services/storage.service';
 
 const BADGES = [
-  { id: '1', label: 'First\nResponder', icon: 'shield',  color: '#4CC2D1', bg: '#0D2A35' },
-  { id: '2', label: 'Early\nBird',      icon: 'sunny',   color: '#F59E0B', bg: '#3D2E0A' },
-  { id: '3', label: 'Community\nHero',  icon: 'people',  color: '#A78BFA', bg: '#2D1F4A' },
-  { id: '4', label: 'Mapper',           icon: 'map',     color: '#30A89C', bg: '#0D3D35' },
+  { id: '1', label: 'First\nResponder', icon: 'shield', color: '#4CC2D1', bg: '#0D2A35' },
+  { id: '2', label: 'Early\nBird', icon: 'sunny', color: '#F59E0B', bg: '#3D2E0A' },
+  { id: '3', label: 'Community\nHero', icon: 'people', color: '#A78BFA', bg: '#2D1F4A' },
+  { id: '4', label: 'Mapper', icon: 'map', color: '#30A89C', bg: '#0D3D35' },
 ];
 
 const DEFAULT_COORDS = { latitude: 6.9271, longitude: 79.8612 }; // Colombo default
 
 const DARK_MAP_STYLE = [
-  { elementType: 'geometry',                                 stylers: [{ color: '#0d1f2d' }] },
-  { elementType: 'labels.text.fill',                         stylers: [{ color: '#4CC2D1' }] },
-  { elementType: 'labels.text.stroke',                       stylers: [{ color: '#0a1820' }] },
-  { featureType: 'road',        elementType: 'geometry',     stylers: [{ color: '#1E3A44' }] },
-  { featureType: 'road',        elementType: 'geometry.stroke', stylers: [{ color: '#071318' }] },
-  { featureType: 'water',       elementType: 'geometry',     stylers: [{ color: '#071318' }] },
-  { featureType: 'poi',         elementType: 'geometry',     stylers: [{ color: '#0a1820' }] },
-  { featureType: 'transit',     elementType: 'geometry',     stylers: [{ color: '#1E3A44' }] },
-  { featureType: 'administrative', elementType: 'geometry',  stylers: [{ color: '#1E3A44' }] },
+  { elementType: 'geometry', stylers: [{ color: '#0d1f2d' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#4CC2D1' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#0a1820' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1E3A44' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#071318' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#071318' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#0a1820' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1E3A44' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#1E3A44' }] },
 ];
 
 // ─────────────────────────────────────────────
@@ -116,17 +116,17 @@ function EditModal({
   const { user, profile, refreshProfile } = useAuth();
 
   // Local form state — initialised from real profile data
-  const [phone, setPhone]             = useState(profile?.phoneNumber ?? '');
-  const [address, setAddress]         = useState(profile?.address ?? '');
-  const [notifSound, setNotifSound]   = useState(profile?.notificationSound ?? true);
+  const [phone, setPhone] = useState(profile?.phoneNumber ?? '');
+  const [address, setAddress] = useState(profile?.address ?? '');
+  const [notifSound, setNotifSound] = useState(profile?.notificationSound ?? true);
   const [alertRadius, setAlertRadius] = useState(profile?.alertRadius ?? '10 Km');
-  const [saving, setSaving]           = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showImageOptions, setShowImageOptions] = useState(false);
-  
-  const [nic, setNic]                 = useState(profile?.nic ?? '');
-  const [province, setProvince]       = useState(profile?.province ?? '');
-  const [district, setDistrict]       = useState(profile?.district ?? '');
-  const [lga, setLga]                 = useState(profile?.localGovernmentArea ?? '');
+
+  const [nic, setNic] = useState(profile?.nic ?? '');
+  const [province, setProvince] = useState(profile?.province ?? '');
+  const [district, setDistrict] = useState(profile?.district ?? '');
+  const [lga, setLga] = useState(profile?.localGovernmentArea ?? '');
 
   // Map & autocomplete states
   const [homeLocation, setHomeLocation] = useState<{ latitude: number; longitude: number } | null>(profile?.homeLocation ?? null);
@@ -337,13 +337,13 @@ function EditModal({
       const path = `reports/${user.uid}/avatar_${Date.now()}.jpg`;
       console.log('⬆️ Uploading avatar to path:', path);
       const downloadUrl = await uploadFile(compressedUri, path);
-      
+
       await updateDoc(doc(db, 'users', user.uid), {
         avatarUrl: downloadUrl,
       });
-      
+
       await refreshProfile();
-      
+
       Toast.show({
         type: 'success',
         text1: 'Photo Uploaded!',
@@ -373,20 +373,20 @@ function EditModal({
         });
         return;
       }
-      
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-      
+
       if (result.canceled || !result.assets || result.assets.length === 0) {
         return;
       }
-      
+
       const uri = result.assets[0].uri;
-      
+
       const sizeOk = await isUnderSizeLimit(uri, 10);
       if (!sizeOk) {
         Toast.show({
@@ -396,7 +396,7 @@ function EditModal({
         });
         return;
       }
-      
+
       await processAndUploadAvatar(uri);
     } catch (e) {
       console.error('Camera launch error:', e);
@@ -420,20 +420,20 @@ function EditModal({
         });
         return;
       }
-      
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-      
+
       if (result.canceled || !result.assets || result.assets.length === 0) {
         return;
       }
-      
+
       const uri = result.assets[0].uri;
-      
+
       const sizeOk = await isUnderSizeLimit(uri, 10);
       if (!sizeOk) {
         Toast.show({
@@ -443,7 +443,7 @@ function EditModal({
         });
         return;
       }
-      
+
       await processAndUploadAvatar(uri);
     } catch (e) {
       console.error('Gallery launch error:', e);
@@ -466,7 +466,7 @@ function EditModal({
       });
       return;
     }
-    
+
     setUploadLoading(true);
     try {
       const currentUrl = profile.avatarUrl;
@@ -486,13 +486,13 @@ function EditModal({
           console.warn('Storage deletion warning:', storageErr?.code, storageErr?.message);
         }
       }
-      
+
       await updateDoc(doc(db, 'users', user.uid), {
         avatarUrl: null,
       });
-      
+
       await refreshProfile();
-      
+
       Toast.show({
         type: 'success',
         text1: 'Photo Removed',
@@ -535,7 +535,7 @@ function EditModal({
                     ? { uri: profile.avatarUrl }
                     : require('../../assets/images/iconAlerZone-Bg-none.png')
                 }
-                className="w-24 h-24 rounded-full"
+                className="w-32 h-32 rounded-full"
                 style={{ borderWidth: 3, borderColor: '#4CC2D1' }}
                 resizeMode={profile?.avatarUrl ? 'cover' : 'contain'}
               />
@@ -843,7 +843,7 @@ function EditModal({
               <View className="flex-row items-center justify-between py-3">
                 <Text className="text-white text-sm font-medium">Alert Radius (km)</Text>
                 <View className="flex-row items-center gap-3">
-                  <Pressable 
+                  <Pressable
                     onPress={() => {
                       const current = parseInt(alertRadius.replace(/[^0-9]/g, '')) || 5;
                       const next = Math.max(1, current - 1);
@@ -872,7 +872,7 @@ function EditModal({
                     maxLength={2}
                     className="text-[#4CC2D1] text-base font-semibold w-8 text-center p-0 m-0"
                   />
-                  <Pressable 
+                  <Pressable
                     onPress={() => {
                       const current = parseInt(alertRadius.replace(/[^0-9]/g, '')) || 5;
                       const next = Math.min(15, current + 1);
@@ -997,7 +997,7 @@ function LogoutModal({
   onConfirm: () => void;
   loggingOut: boolean;
 }) {
-  const scaleAnim   = useRef(new Animated.Value(0.85)).current;
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -1111,12 +1111,30 @@ function LogoutModal({
 // Main Profile Screen
 // ─────────────────────────────────────────────
 export default function ProfileScreen() {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { onScroll } = useScrollContext();
-  const { profile, logout } = useAuth();
-  const [editVisible, setEditVisible]       = useState(false);
-  const [logoutVisible, setLogoutVisible]   = useState(false);
-  const [loggingOut, setLoggingOut]         = useState(false);
+  const { user, profile, logout } = useAuth();
+  const [editVisible, setEditVisible] = useState(false);
+  const [logoutVisible, setLogoutVisible] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch unread notifications count in real-time
+  useEffect(() => {
+    if (!user?.uid) return;
+    const q = query(
+      collection(db, 'notifications'),
+      where('recipientUid', '==', user.uid),
+      where('isRead', '==', false)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setUnreadCount(snap.docs.length);
+    }, (err) => {
+      console.error("Profile unread count listener error:", err);
+    });
+    return unsub;
+  }, [user?.uid]);
 
   // ── Show logout confirmation modal ──
   const handleLogoutPress = () => setLogoutVisible(true);
@@ -1165,15 +1183,17 @@ export default function ProfileScreen() {
             />
             <Text className="text-white text-xl font-bold tracking-tight">AlertZone</Text>
           </View>
-          <Pressable className="active:opacity-70">
+          <Pressable onPress={() => router.push('/notifications' as any)} className="active:opacity-70">
             <View className="w-10 h-10 rounded-full bg-[#1E3A44] items-center justify-center"
               style={{ borderWidth: 1, borderColor: '#2D4F5C' }}
             >
               <Ionicons name="notifications-outline" size={20} color="#5A7D8A" />
             </View>
-            <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E05C5C] items-center justify-center">
-              <Text className="text-white text-[10px] font-bold">10</Text>
-            </View>
+            {unreadCount > 0 && (
+              <View className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#E05C5C] items-center justify-center">
+                <Text className="text-white text-[10px] font-bold">{unreadCount}</Text>
+              </View>
+            )}
           </Pressable>
         </View>
 
@@ -1186,7 +1206,7 @@ export default function ProfileScreen() {
                   ? { uri: profile.avatarUrl }
                   : require('../../assets/images/iconAlerZone-Bg-none.png')
               }
-              className="w-24 h-24 rounded-full"
+              className="w-32 h-32 rounded-full"
               style={{ borderWidth: 3, borderColor: '#4CC2D1' }}
               resizeMode={profile.avatarUrl ? 'cover' : 'contain'}
             />
