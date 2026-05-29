@@ -7,6 +7,7 @@ import {
   Image,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -207,6 +208,24 @@ export default function HomeScreen() {
   const [nearbyIssues, setNearbyIssues] = useState<ReportPin[]>([]);
   const [latestUpdates, setLatestUpdates] = useState<ReportPin[]>([]);
   const [userLocation, setUserLocation] = useState<{ latitude: number, longitude: number } | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    let coords = profile?.homeLocation || null;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        coords = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+      }
+    } catch (e) {
+      console.warn('Location error on Home Refresh:', e);
+    }
+    setUserLocation(coords);
+    await new Promise(resolve => setTimeout(resolve, 800));
+    setRefreshing(false);
+  };
 
   const radiusKm = profile?.alertRadius ? parseInt(profile.alertRadius.replace(/[^0-9]/g, '')) || 5 : 5;
   const firstName = profile?.fullName ? profile.fullName.split(' ')[0] : 'Citizen';
@@ -328,6 +347,14 @@ export default function HomeScreen() {
           paddingTop: insets.top + 8,
           paddingBottom: 120, // space for floating tab bar
         }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#4CC2D1"
+            colors={["#4CC2D1"]}
+          />
+        }
       >
         {/* ── 1. Top Nav ── */}
         <View className="flex-row justify-between items-center px-5 mb-5">
