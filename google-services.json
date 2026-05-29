@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "52846862990",
+    "project_id": "alertzone-3d2a3",
+    "storage_bucket": "alertzone-3d2a3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:52846862990:android:740d5be2836f2347829fdf",
+        "android_client_info": {
+          "package_name": "com.anonymous.alertzone"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "52846862990-munbgn67do5e6v9ehr20d3edclao5m6g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBj9TsZSU-9mJcpPNmigPU3nLKOCDI869I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "52846862990-munbgn67do5e6v9ehr20d3edclao5m6g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

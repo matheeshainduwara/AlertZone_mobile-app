@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import Constants from 'expo-constants';
@@ -109,6 +109,10 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
 
   } catch (error) {
     console.error('❌ Error registering for push notifications:', error);
+    Alert.alert(
+      'Push Registration Error',
+      error instanceof Error ? error.message : String(error)
+    );
   }
 
   return token;
