@@ -161,6 +161,39 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
+## 💬 Phase 3 Addendum: Upvotes, Comments & Admin Integration
+**Objective:** Add citizen upvoting, confirmation modals, keyboard-avoiding comment feeds, and full admin console linkage.
+
+- **[2026-05-29] Upvote & Retract Confirmation Flow:**
+    - Redesigned the upvote section into a fully pressable glassmorphic blue card block.
+    - Tapping to upvote triggers a confirmation modal permitting standard upvotes or upvoting with an optional comment.
+    - Tapping to retract triggers a safety modal prompting confirmation to withdraw the upvote.
+    - Toast notifications configured to mount within the native modal tree to render on top of all modal windows.
+- **[2026-05-29] Keyboard-Avoiding Comments Feed:**
+    - Converted comment inputs from absolute to relative flex layouts, allowing `KeyboardAvoidingView` to dynamically slide input fields upward on focus.
+    - Resolved real names and avatars for authors matching the logged-in user, adding a `(You)` label and a distinctive teal border.
+    - Initial comment list capped at 5 comments with a toggle button to "View All".
+- **[2026-05-29] Admin Console Integration:**
+    - Wired live listeners to `comments` and `upvotes` subcollections on the report detail view.
+    - Allowed admins to see who commented or upvoted with real avatar, name, and email details.
+    - Linked admin avatars to trigger the `UserDetailsModal` showing user history and management controls.
+
+---
+
+## 🛠 APK Production Readiness & Bug-Fixes
+**Objective:** Thoroughly analyze and rectify layout, error feedback, and stability issues prior to APK generation.
+
+- **[2026-05-29] Android APK Fixes:**
+    - **BUG-1 (Android Carousel Position)**: Changed image carousel arrows from percentage positioning (`top: '50%'`) to static pixel coordinates (`top: 84`) to bypass Android APK render bugs.
+    - **BUG-2 & BUG-3 (Toast Error Catches)**: Implemented Toast warning messages inside catch blocks for upvote and comment operations.
+    - **BUG-4 (Negative Counts Guard)**: Used `Math.max(0, ...)` to ensure the upvote UI never displays a negative value on race conditions.
+    - **BUG-5 (Report Title Recovery)**: Restored the rendering of `report.title` inside the details modal header section.
+    - **BUG-6 (Icon Fallback)**: Added `'help-circle-outline'` fallback to `report.categoryIcon` properties.
+    - **BUG-7 (Style Standardization)**: Standardized React Native inline styles in `upvoted-reports.tsx` by replacing NativeWind `className` flags.
+    - **verification**: Validated that all code compiles clean with `npx tsc --noEmit` and EAS build configurations are complete.
+
+---
+
 ## 📈 Summary of Technical Stack Used
 - **Frontend:** React Native (Expo SDK 54+)
 - **Navigation:** Expo Router (Tabs-based)
@@ -172,4 +205,4 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
-*Last Updated: 2026-05-29 — Pull-to-Refresh · Auto-Archive · Archive Screen*
+*Last Updated: 2026-05-29 — Upvotes & Comments Integration · APK Bug-Fixes*

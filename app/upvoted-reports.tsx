@@ -87,7 +87,7 @@ function timeAgo(ts: any): string {
 function ReportCard({ report, onPress }: { report: Report; onPress: () => void }) {
   const cfg = STATUS_CONFIG[report.status] ?? STATUS_CONFIG.PENDING;
   return (
-    <Pressable onPress={onPress} className="mb-3 active:opacity-80">
+    <Pressable onPress={onPress} style={{ marginBottom: 12 }}>
       <View style={{ backgroundColor: '#111E27', borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: '#1E3347' }}>
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: 80, height: 80, alignItems: 'center', justifyContent: 'center', backgroundColor: (report.categoryColor ?? '#4CC2D1') + '18' }}>

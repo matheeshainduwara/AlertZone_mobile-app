@@ -12,16 +12,27 @@
 | Phase | Status | Notes |
 |---|---|---------|
 | Phase 0: Architecture Cleanup | 🔴 Not Started | Planned next |
-| Phase 1: Core Firebase Integration | 🟡 In Progress | Auth ✅, Report submit ✅, Map live ✅, History live ✅ |
+| Phase 1: Core Firebase Integration | 🟢 Done | Auth, Live Database, Storage, and Push Notifications integrated |
 | Phase 2: Report System | 🟢 Done | Submit + track + images + location search working ✅ |
-| Phase 3: Community Features | 🔴 Not Started | Upvoting UI exists but not functional |
+| Phase 3: Community Features | 🟢 Done | Upvotes confirmation flow, community comments list, user detail modals, and dashboard linking ✅ |
 | Phase 4: Notifications | 🟢 Done | expo-notifications plugin ✅, push tokens ✅, foreground listeners ✅, in-app Notification Center ✅ |
 | Phase 5: Badge System | 🔴 Not Started | Static badges shown in profile |
-| Phase 6: Polish & Launch | 🟡 In Progress | Animated splash gate ✅, smart first-launch routing ✅, onboarding seen flag ✅ |
+| Phase 6: Polish & Launch | 🟢 Done | Animated splash gate, onboarding seen flag, and 7 critical/medium APK readiness fixes ✅ |
 
 ---
 
 ## What IS Working ✅
+
+### Upvotes & Community Comments (Fully Functional)
+- [x] Vibrantly redesigned, fully pressable upvote banner block (`#0f93f2ff`)
+- [x] Custom interactive confirmation modal for upvoting with optional commenting support
+- [x] Custom retract confirmation modal when removing an upvote
+- [x] Fully keyboard-avoiding flex layout for the community comments input bar
+- [x] Avatar and user name resolution for comments made by current user, highlighted with `(You)` label and teal border
+- [x] Limit initial comment feed to 5 entries with a custom "View All" toggle button
+- [x] Custom Toast notifications rendered inside the native modal wrapper to prevent rendering behind modal windows
+- [x] Admin console live subscriptions to comments and upvotes
+- [x] Admin console user profiles linkage from comments/upvotes avatars to open the user details controls
 
 ### Authentication (Fully Functional)
 - [x] Email/password registration with Firebase Auth
@@ -157,9 +168,9 @@
 - [ ] `useUserBadges` — badge calculation logic
 
 ### Features
-- [ ] Real report submission to Firestore
+- [x] Real report submission to Firestore ✅
 - [x] Image/video upload to Firebase Storage ✅
-- [ ] Community upvoting system
+- [x] Community upvoting system with comment integration ✅
 - [x] Push notifications (Expo Push API) ✅
 - [ ] Badge calculation and display from real data
 - [ ] Area-based report filtering

@@ -292,6 +292,13 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
       }
     } catch (err) {
       console.error('Upvote error:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Something went wrong',
+        text2: 'Please check your connection and try again.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     }
     setIsUpvoting(false);
   };
@@ -321,6 +328,13 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
     } catch (err) {
       console.error('Comment post error:', err);
+      Toast.show({
+        type: 'error',
+        text1: 'Failed to post comment',
+        text2: 'Please try again.',
+        position: 'top',
+        visibilityTime: 3000,
+      });
     }
     setIsPostingComment(false);
   }, [user, report, newComment, isPostingComment]);
@@ -448,7 +462,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                         {activeImageIndex > 0 && (
                           <Pressable
                             onPress={() => setActiveImageIndex(activeImageIndex - 1)}
-                            style={{ position: 'absolute', left: 10, top: '50%', marginTop: -16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16, padding: 6 }}
+                            style={{ position: 'absolute', left: 10, top: 84, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16, padding: 6 }}
                           >
                             <Ionicons name="chevron-back" size={20} color="white" />
                           </Pressable>
@@ -456,7 +470,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                         {activeImageIndex < report.imageUrls.length - 1 && (
                           <Pressable
                             onPress={() => setActiveImageIndex(activeImageIndex + 1)}
-                            style={{ position: 'absolute', right: 10, top: '50%', marginTop: -16, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16, padding: 6 }}
+                            style={{ position: 'absolute', right: 10, top: 84, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16, padding: 6 }}
                           >
                             <Ionicons name="chevron-forward" size={20} color="white" />
                           </Pressable>
@@ -475,13 +489,16 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                         backgroundColor: (report.categoryColor ?? '#4CC2D1') + '22',
                         alignItems: 'center', justifyContent: 'center',
                       }}>
-                        <Ionicons name={report.categoryIcon as any} size={18} color={report.categoryColor ?? '#4CC2D1'} />
+                        <Ionicons name={(report.categoryIcon || 'help-circle-outline') as any} size={18} color={report.categoryColor ?? '#4CC2D1'} />
                       </View>
                       <View>
                         <Text style={{ color: '#5A7D8A', fontSize: 11, fontWeight: '600' }}>{report.category}</Text>
                         <Text style={{ color: '#3A5060', fontSize: 10 }}>{timeAgo(report.createdAt)}</Text>
                       </View>
                     </View>
+                    <Text style={{ color: 'white', fontSize: 22, fontWeight: '800', lineHeight: 28, marginTop: 6 }}>
+                      {report.title}
+                    </Text>
                   </View>
 
                   {/* Upvote Count Badge */}
@@ -498,7 +515,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                     }}
                   >
                     <Text style={{ color: '#4CC2D1', fontWeight: '600', fontSize: 15 }}>
-                      Total Upvotes:  {report.upvoteCount}
+                      Total Upvotes:  {Math.max(0, report.upvoteCount ?? 0)}
                     </Text>
                   </View>
 
