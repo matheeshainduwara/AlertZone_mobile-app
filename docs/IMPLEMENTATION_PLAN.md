@@ -218,10 +218,10 @@
 **Goal**: Complete profile features and media handling.
 
 ### Task 5.1: Avatar Upload
-- [ ] Wire camera button on profile to `expo-image-picker`
-- [ ] Upload avatar to Firebase Storage via `storage.service.ts`
-- [ ] Store avatar URL in user profile
-- [ ] Display real avatar across all screens
+- [x] Wire camera button on profile to `expo-image-picker` ✅
+- [x] Upload avatar to Firebase Storage via `storage.service.ts` ✅
+- [x] Store avatar URL in user profile ✅
+- [x] Display real avatar across all screens ✅
 
 ### Task 5.2: Report Media
 - [ ] Display uploaded images in report detail modal

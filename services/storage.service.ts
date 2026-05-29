@@ -6,6 +6,26 @@ import * as ImageManipulator from 'expo-image-manipulator';
 const COMPRESS_TARGET_MB = 2;
 
 /**
+ * Helper function to convert a local file/content URI to a Blob using XMLHttpRequest.
+ * Standard fetch() fails on local file:// or content:// URIs in standalone React Native APK builds.
+ */
+const uriToBlob = (uri: string): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.onload = function () {
+      resolve(xhr.response);
+    };
+    xhr.onerror = function (e) {
+      console.error('❌ uriToBlob failed for uri:', uri, e);
+      reject(new TypeError('Network request failed'));
+    };
+    xhr.responseType = 'blob';
+    xhr.open('GET', uri, true);
+    xhr.send(null);
+  });
+};
+
+/**
  * Compresses an image iteratively until it is under COMPRESS_TARGET_MB (2 MB).
  * Tries progressively lower quality levels and smaller widths to guarantee the target.
  * @param uri The local URI of the image
@@ -27,8 +47,7 @@ export const compressImage = async (uri: string): Promise<string> => {
         [{ resize: { width } }],
         { compress: quality, format: ImageManipulator.SaveFormat.JPEG }
       );
-      const response = await fetch(result.uri);
-      const blob = await response.blob();
+      const blob = await uriToBlob(result.uri);
       const sizeMb = blob.size / (1024 * 1024);
       console.log(`🗜️ Compressed to ${width}px @ q${quality}: ${sizeMb.toFixed(2)} MB`);
       if (sizeMb <= COMPRESS_TARGET_MB) {
@@ -60,8 +79,7 @@ export const compressImage = async (uri: string): Promise<string> => {
  */
 export const getFileSizeMb = async (uri: string): Promise<number | null> => {
   try {
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    const blob = await uriToBlob(uri);
     return blob.size / (1024 * 1024);
   } catch (error) {
     console.error('❌ Size check error:', error);
@@ -87,8 +105,7 @@ export const isUnderSizeLimit = async (uri: string, maxSizeMb: number = 5): Prom
  */
 export const uploadFile = async (uri: string, path: string): Promise<string> => {
   try {
-    const response = await fetch(uri);
-    const blob = await response.blob();
+    const blob = await uriToBlob(uri);
     const storageRef = ref(storage, path);
     await uploadBytes(storageRef, blob);
     return await getDownloadURL(storageRef);

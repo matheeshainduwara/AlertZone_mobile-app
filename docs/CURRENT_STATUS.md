@@ -114,7 +114,7 @@
 
 ### Profile Screen (`profile.tsx`)
 - [ ] Badges — hardcoded `BADGES` array, not computed from user activity
-- [ ] Avatar upload — camera button exists but `expo-image-picker` not wired
+- [x] Avatar upload — camera button wired, supports photo/gallery, compression, and Storage upload ✅
 - [ ] "View All" badges link — not functional
 - [x] Notification sound preference and alert radius edit settings saved to Firestore ✅
 - [x] Stats use real Firestore data ✅
@@ -127,7 +127,7 @@
 
 ### Firebase Services
 - [ ] `report.service.ts` — Firestore CRUD for reports
-- [ ] `storage.service.ts` — Image/video upload to Firebase Storage
+- [x] `storage.service.ts` — Image upload to Firebase Storage with local URI fix for APK builds ✅
 - [x] `notification.service.ts` — Expo push token registration, Android channel setup (`alertzone-alerts`), Firestore token save/clear ✅
 - [ ] `user.service.ts` — Separated user operations
 
@@ -142,7 +142,7 @@
 
 ### Features
 - [ ] Real report submission to Firestore
-- [ ] Image/video upload to Firebase Storage
+- [x] Image/video upload to Firebase Storage ✅
 - [ ] Community upvoting system
 - [x] Push notifications (Expo Push API) ✅
 - [ ] Badge calculation and display from real data
