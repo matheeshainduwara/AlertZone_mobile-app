@@ -253,7 +253,14 @@ export default function NotificationsScreen() {
             <Ionicons name="arrow-back" size={20} color="#4CC2D1" />
           </Pressable>
           <View>
-            <Text className="text-white text-lg font-bold">Notifications</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text className="text-white text-lg font-bold">Notifications</Text>
+              {unreadCount > 0 && (
+                <View style={{ backgroundColor: '#E05C5C', paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 10, minWidth: 18, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: 'white', fontSize: 10, fontWeight: '700' }}>{unreadCount}</Text>
+                </View>
+              )}
+            </View>
             {unreadCount > 0 && (
               <Text className="text-[#4CC2D1] text-xs font-semibold">{unreadCount} unread messages</Text>
             )}
@@ -308,6 +315,8 @@ export default function NotificationsScreen() {
                 disabled={clearingAll}
                 className="mr-2 active:opacity-80"
                 style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   paddingHorizontal: 16,
                   paddingVertical: 8,
                   backgroundColor: isActive ? '#1E3A44' : '#111E27',
@@ -325,6 +334,24 @@ export default function NotificationsScreen() {
                 >
                   {item.label}
                 </Text>
+                {item.id === 'unread' && unreadCount > 0 && (
+                  <View
+                    style={{
+                      marginLeft: 6,
+                      backgroundColor: '#E05C5C',
+                      borderRadius: 10,
+                      paddingHorizontal: 6,
+                      paddingVertical: 1,
+                      minWidth: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontSize: 9, fontWeight: '700' }}>
+                      {unreadCount}
+                    </Text>
+                  </View>
+                )}
               </Pressable>
             );
           }}
@@ -343,7 +370,7 @@ export default function NotificationsScreen() {
           </View>
           <Text className="text-white text-base font-bold mb-1">All caught up!</Text>
           <Text className="text-gray-500 text-xs text-center leading-5">
-            You don't have any notifications under this filter at the moment.
+            {"You don't have any notifications under this filter at the moment."}
           </Text>
         </View>
       ) : (
