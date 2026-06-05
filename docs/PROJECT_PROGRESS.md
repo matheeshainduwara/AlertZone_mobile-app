@@ -312,7 +312,7 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
-## 📋 Session: Pagination & Date Filtering for My Reports / Archive
+## 📋 Session: Pagination & Date Filtering for My Reports / Archive / Upvoted
 **Date:** 2026-06-06
 
 - **[2026-06-06] Date Filters in My Reports (`history.tsx`):**
@@ -326,6 +326,13 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
     - A "Showing X of Y reports" results-count label appears above the list.
     - An **"All X reports shown"** end indicator renders after the last report when the user has paged through everything.
     - Both `history.tsx` and `archive.tsx` share identical Load More button design and constants (`INITIAL_PAGE_SIZE = 15`, `LOAD_MORE_SIZE = 20`).
+
+- **[2026-06-06] Date Filters and Pagination in Upvoted Reports (`upvoted-reports.tsx`):**
+    - Ported the identical Date Filter chip row and custom `CalendarModal` range picker UI.
+    - Implemented combined filtering (category + status + date) client-side.
+    - Added the matching pagination behavior (`INITIAL_PAGE_SIZE = 15`, `LOAD_MORE_SIZE = 20`) with results count label, "Load More" button, and end indicator.
+    - Built using standard inline React Native styles to maintain style standardization rules.
+    - Configured visible count to reset on any filter change (category, status, date).
 
 ---
 

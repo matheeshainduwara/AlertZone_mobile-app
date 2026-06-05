@@ -44,7 +44,7 @@ export default function PhotoSourceModal({
               className="flex-row items-center p-4 mb-4 rounded-2xl bg-[#111E27] active:bg-[#1E3347]/70"
               style={{ borderWidth: 1, borderColor: '#1E3347' }}
             >
-              <View className="w-12 h-12 rounded-xl bg-[#0D2A35] items-center justify-center mr-4">
+              <View className="w-12 h-12 rounded-xl items-center justify-center mr-4">
                 <Ionicons name="camera" size={24} color="#4CC2D1" />
               </View>
               <View className="flex-1">

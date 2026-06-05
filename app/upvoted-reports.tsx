@@ -5,7 +5,8 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Image,
+  Modal,
+  StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -65,20 +66,111 @@ const CATEGORIES = [
 const STATUS_FILTERS = ['All', 'Pending', 'Fixing', 'Resolved', 'Rejected'] as const;
 type StatusFilter = typeof STATUS_FILTERS[number];
 
+const DATE_FILTERS = [
+  { id: 'all',    label: 'All Time' },
+  { id: 'today',  label: 'Today' },
+  { id: '7d',     label: 'Last 7 Days' },
+  { id: '30d',    label: 'Last 30 Days' },
+  { id: 'custom', label: 'Custom Range' },
+] as const;
+type DateFilterId = typeof DATE_FILTERS[number]['id'];
+
+const INITIAL_PAGE_SIZE = 15;
+const LOAD_MORE_SIZE = 20;
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-function timeAgo(ts: any): string {
-  if (!ts) return '';
-  try {
-    const d = ts?.toDate ? ts.toDate() : new Date(ts);
-    const s = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (s < 60) return 'Just now';
-    if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-    if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-    if (s < 604800) return `${Math.floor(s / 86400)}d ago`;
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  } catch { return ''; }
+const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
+const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();
+
+interface CalendarProps {
+  value: Date | null;
+  onChange: (date: Date) => void;
+  onClose: () => void;
+  title: string;
+}
+
+function CalendarModal({ value, onChange, onClose, title }: CalendarProps) {
+  const [currentYear, setCurrentYear] = useState(value ? value.getFullYear() : new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(value ? value.getMonth() : new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState<number | null>(value ? value.getDate() : null);
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+  const firstDay = getFirstDayOfMonth(currentYear, currentMonth);
+
+  const handlePrevMonth = () => {
+    if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(currentYear - 1); }
+    else setCurrentMonth(currentMonth - 1);
+    setSelectedDay(null);
+  };
+
+  const handleNextMonth = () => {
+    if (currentMonth === 11) { setCurrentMonth(0); setCurrentYear(currentYear + 1); }
+    else setCurrentMonth(currentMonth + 1);
+    setSelectedDay(null);
+  };
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) cells.push({ day: null, key: `empty-${i}` });
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, key: `day-${d}` });
+
+  const handleDaySelect = (day: number) => {
+    setSelectedDay(day);
+    onChange(new Date(currentYear, currentMonth, day));
+    onClose();
+  };
+
+  return (
+    <Modal transparent visible animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.calendarContainer}>
+          <Text style={styles.calendarTitle}>{title}</Text>
+          <View style={styles.calendarHeader}>
+            <Pressable onPress={handlePrevMonth} style={styles.arrowButton}>
+              <Ionicons name="chevron-back" size={20} color="#4CC2D1" />
+            </Pressable>
+            <Text style={styles.monthYearText}>{months[currentMonth]} {currentYear}</Text>
+            <Pressable onPress={handleNextMonth} style={styles.arrowButton}>
+              <Ionicons name="chevron-forward" size={20} color="#4CC2D1" />
+            </Pressable>
+          </View>
+          <View style={styles.weekdaysRow}>
+            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+              <Text key={d} style={styles.weekdayText}>{d}</Text>
+            ))}
+          </View>
+          <View style={styles.daysGrid}>
+            {cells.map((cell) => {
+              const isSelected = cell.day === selectedDay;
+              return (
+                <Pressable
+                  key={cell.key}
+                  disabled={cell.day === null}
+                  onPress={() => cell.day && handleDaySelect(cell.day)}
+                  style={[styles.dayCell, isSelected && styles.selectedDayCell]}
+                >
+                  {cell.day && (
+                    <Text style={[styles.dayText, isSelected && styles.selectedDayText]}>
+                      {cell.day}
+                    </Text>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+          <Pressable onPress={onClose} style={styles.closeCalendarButton}>
+            <Text style={styles.closeCalendarText}>Cancel</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -135,6 +227,27 @@ export default function UpvotedReportsScreen() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activeStatus, setActiveStatus]     = useState<StatusFilter>('All');
   const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+
+  // Date filter state
+  const [activeDateFilter, setActiveDateFilter] = useState<DateFilterId>('all');
+  const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
+  const [customEndDate, setCustomEndDate]   = useState<Date | null>(null);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker]   = useState(false);
+
+  // Pagination state
+  const [visibleCount, setVisibleCount] = useState(INITIAL_PAGE_SIZE);
+
+  // Reset visible count when any filter changes
+  useEffect(() => {
+    setVisibleCount(INITIAL_PAGE_SIZE);
+  }, [activeCategory, activeStatus, activeDateFilter, customStartDate, customEndDate]);
+
+  const clearCustomRange = () => {
+    setCustomStartDate(null);
+    setCustomEndDate(null);
+    setActiveDateFilter('all');
+  };
 
   // ── Subscribe to all reports the user has upvoted ──
   useEffect(() => {
@@ -201,8 +314,34 @@ export default function UpvotedReportsScreen() {
     if (activeStatus === 'Fixing' && r.status !== 'FIXING' && r.status !== 'ASSIGNED') return false;
     if (activeStatus === 'Resolved' && r.status !== 'RESOLVED') return false;
     if (activeStatus === 'Rejected' && r.status !== 'REJECTED') return false;
+
+    // Date filter
+    const reportDate = r.createdAt?.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+    if (activeDateFilter === 'today') {
+      const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
+      if (reportDate < startOfToday) return false;
+    } else if (activeDateFilter === '7d') {
+      const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
+      if (reportDate < sevenAgo) return false;
+    } else if (activeDateFilter === '30d') {
+      const thirtyAgo = new Date(); thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+      if (reportDate < thirtyAgo) return false;
+    } else if (activeDateFilter === 'custom') {
+      if (customStartDate) {
+        const start = new Date(customStartDate); start.setHours(0, 0, 0, 0);
+        if (reportDate < start) return false;
+      }
+      if (customEndDate) {
+        const end = new Date(customEndDate); end.setHours(23, 59, 59, 999);
+        if (reportDate > end) return false;
+      }
+    }
+
     return true;
   });
+
+  const visibleReports = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
 
   return (
     <LinearGradient colors={['#0D1F2D', '#0A1820', '#071318']} style={{ flex: 1 }}>
@@ -224,7 +363,7 @@ export default function UpvotedReportsScreen() {
           </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={{ color: 'white', fontSize: 20, fontWeight: '800' }}>My Upvoted Reports</Text>
-            <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 2 }}>Issues you've supported in your community</Text>
+            <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 2 }}>{"Issues you've supported in your community"}</Text>
           </View>
           <View style={{ backgroundColor: '#1E3347', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 }}>
             <Text style={{ color: '#4CC2D1', fontSize: 12, fontWeight: '700' }}>{filtered.length}</Text>
@@ -285,6 +424,80 @@ export default function UpvotedReportsScreen() {
           </ScrollView>
         </View>
 
+        {/* ── Date Filter ── */}
+        <View style={{ marginBottom: 16 }}>
+          <Text style={{ color: '#5A7D8A', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 8 }}>
+            Date Filter
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
+            {DATE_FILTERS.map((df) => {
+              const isActive = activeDateFilter === df.id;
+              return (
+                <Pressable
+                  key={df.id}
+                  onPress={() => setActiveDateFilter(df.id)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: isActive ? '#4CC2D1' : '#111E27',
+                    borderWidth: 1, borderColor: isActive ? '#4CC2D1' : '#1E3347',
+                  }}
+                >
+                  <Text style={{ color: isActive ? '#071318' : '#5A7D8A', fontSize: 12, fontWeight: '600' }}>
+                    {df.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ── Custom Date Range Picker ── */}
+        {activeDateFilter === 'custom' && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16, padding: 16, borderRadius: 18, backgroundColor: '#111E27', borderWidth: 1, borderColor: '#1E3347' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ color: 'white', fontSize: 10, fontWeight: '700', letterSpacing: 1.5, textTransform: 'uppercase' }}>Select Date Range</Text>
+              {(customStartDate || customEndDate) && (
+                <Pressable onPress={clearCustomRange} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+                  <Text style={{ color: '#E05C5C', fontSize: 12, fontWeight: '600' }}>Reset</Text>
+                </Pressable>
+              )}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <Pressable
+                onPress={() => setShowStartPicker(true)}
+                style={({ pressed }) => ({
+                  flex: 1, padding: 12, borderRadius: 12, backgroundColor: '#1E3A44', borderWidth: 1, borderColor: '#2D4F5C',
+                  flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: pressed ? 0.75 : 1
+                })}
+              >
+                <View>
+                  <Text style={{ color: '#5A7D8A', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>Start Date</Text>
+                  <Text style={{ color: 'white', fontSize: 14, fontWeight: '600', marginTop: 2 }}>
+                    {customStartDate ? customStartDate.toLocaleDateString('en-GB') : 'Select...'}
+                  </Text>
+                </View>
+                <Ionicons name="calendar-outline" size={16} color="#4CC2D1" />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShowEndPicker(true)}
+                style={({ pressed }) => ({
+                  flex: 1, padding: 12, borderRadius: 12, backgroundColor: '#1E3A44', borderWidth: 1, borderColor: '#2D4F5C',
+                  flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', opacity: pressed ? 0.75 : 1
+                })}
+              >
+                <View>
+                  <Text style={{ color: '#5A7D8A', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' }}>End Date</Text>
+                  <Text style={{ color: 'white', fontSize: 14, fontWeight: '600', marginTop: 2 }}>
+                    {customEndDate ? customEndDate.toLocaleDateString('en-GB') : 'Select...'}
+                  </Text>
+                </View>
+                <Ionicons name="calendar-outline" size={16} color="#4CC2D1" />
+              </Pressable>
+            </View>
+          </View>
+        )}
+
         {/* ── Report List ── */}
         <View style={{ paddingHorizontal: 20 }}>
           {loading ? (
@@ -311,16 +524,70 @@ export default function UpvotedReportsScreen() {
               </Text>
             </View>
           ) : (
-            filtered.map((report) => (
-              <ReportCard
-                key={report.id}
-                report={report}
-                onPress={() => setSelectedReportId(report.id)}
-              />
-            ))
+            <>
+              {/* Results count */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ color: '#5A7D8A', fontSize: 12 }}>
+                  Showing <Text style={{ color: '#4CC2D1', fontWeight: 'bold' }}>{visibleReports.length}</Text> of <Text style={{ color: 'white', fontWeight: '600' }}>{filtered.length}</Text> reports
+                </Text>
+              </View>
+
+              {visibleReports.map((report) => (
+                <ReportCard
+                  key={report.id}
+                  report={report}
+                  onPress={() => setSelectedReportId(report.id)}
+                />
+              ))}
+
+              {/* Load More Button */}
+              {hasMore && (
+                <Pressable
+                  onPress={() => setVisibleCount((c) => c + LOAD_MORE_SIZE)}
+                  style={({ pressed }) => ({
+                    marginTop: 8, marginBottom: 16, paddingVertical: 16, borderRadius: 18,
+                    alignItems: 'center', justifyContent: 'center',
+                    borderWidth: 1, borderColor: '#2D4F5C', backgroundColor: '#111E27',
+                    opacity: pressed ? 0.75 : 1
+                  })}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Ionicons name="chevron-down-circle-outline" size={20} color="#4CC2D1" />
+                    <Text style={{ color: '#4CC2D1', fontWeight: 'bold', fontSize: 14 }}>
+                      Load More ({Math.min(LOAD_MORE_SIZE, filtered.length - visibleCount)} more)
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+
+              {/* End indicator */}
+              {!hasMore && filtered.length > INITIAL_PAGE_SIZE && (
+                <View style={{ alignItems: 'center', paddingVertical: 16 }}>
+                  <Text style={{ color: '#3A5060', fontSize: 12 }}>All {filtered.length} reports shown</Text>
+                </View>
+              )}
+            </>
           )}
         </View>
       </ScrollView>
+
+      {/* Calendar Modals */}
+      {showStartPicker && (
+        <CalendarModal
+          title="Select Start Date"
+          value={customStartDate}
+          onChange={(d) => setCustomStartDate(d)}
+          onClose={() => setShowStartPicker(false)}
+        />
+      )}
+      {showEndPicker && (
+        <CalendarModal
+          title="Select End Date"
+          value={customEndDate}
+          onChange={(d) => setCustomEndDate(d)}
+          onClose={() => setShowEndPicker(false)}
+        />
+      )}
 
       <ReportDetailSheet
         reportId={selectedReportId}
@@ -329,3 +596,75 @@ export default function UpvotedReportsScreen() {
     </LinearGradient>
   );
 }
+
+// ─────────────────────────────────────────────
+// Calendar Styles
+// ─────────────────────────────────────────────
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  calendarContainer: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#111E27',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: '#1E3347',
+    padding: 20,
+    alignItems: 'center',
+  },
+  calendarTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 16,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
+  },
+  arrowButton: { padding: 8 },
+  monthYearText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
+  weekdaysRow: {
+    flexDirection: 'row',
+    width: '100%',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  weekdayText: {
+    color: '#5A7D8A',
+    width: '14.28%',
+    textAlign: 'center',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  daysGrid: { flexDirection: 'row', flexWrap: 'wrap', width: '100%' },
+  dayCell: {
+    width: '14.28%',
+    aspectRatio: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    marginVertical: 2,
+  },
+  selectedDayCell: { backgroundColor: '#4CC2D1' },
+  dayText: { color: '#E2E8F0', fontSize: 14 },
+  selectedDayText: { color: '#071318', fontWeight: 'bold' },
+  closeCalendarButton: {
+    marginTop: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2D4F5C',
+  },
+  closeCalendarText: { color: '#5A7D8A', fontWeight: '600', fontSize: 14 },
+});
