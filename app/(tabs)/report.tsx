@@ -27,10 +27,7 @@ import {
   setDoc,
   query,
   where,
-  orderBy,
-  limit,
   getDocs,
-  documentId,
 } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
 
@@ -734,26 +731,26 @@ export default function ReportScreen() {
       const dCode = DISTRICT_CODES[resolvedDistrict] || "00";
       const idPrefix = `${dateStr}${pCode}${dCode}`;
       
-      // Query the highest ID with this prefix to get next sequential number
+      // Query reports matching current date, province, and district (equality filters only)
       const q = query(
         collection(db, 'reports'),
-        where(documentId(), '>=', idPrefix + '00000'),
-        where(documentId(), '<=', idPrefix + '99999'),
-        orderBy(documentId(), 'desc'),
-        limit(1)
+        where('reportDate', '==', dateStr),
+        where('location.province', '==', resolvedProvince),
+        where('location.district', '==', resolvedDistrict)
       );
       
       const querySnapshot = await getDocs(q);
       let nextNumber = 1;
-      if (!querySnapshot.empty) {
-        const lastDocId = querySnapshot.docs[0].id;
-        // Last 5 characters of ID
-        const lastSeqStr = lastDocId.substring(idPrefix.length);
-        const lastSeqNum = parseInt(lastSeqStr, 10);
-        if (!isNaN(lastSeqNum)) {
-          nextNumber = lastSeqNum + 1;
+      querySnapshot.forEach((doc) => {
+        const docId = doc.id;
+        if (docId.startsWith(idPrefix) && docId.length === idPrefix.length + 5) {
+          const lastSeqStr = docId.substring(idPrefix.length);
+          const lastSeqNum = parseInt(lastSeqStr, 10);
+          if (!isNaN(lastSeqNum) && lastSeqNum >= nextNumber) {
+            nextNumber = lastSeqNum + 1;
+          }
         }
-      }
+      });
       
       const seqStr = String(nextNumber).padStart(5, '0');
       const customReportId = `${idPrefix}${seqStr}`;
@@ -763,6 +760,7 @@ export default function ReportScreen() {
       await setDoc(reportDocRef, {
         uid: user.uid,
         authorName: profile.fullName,
+        reportDate: dateStr,
         title: selectedCategory.label,
         category: selectedCategory.label,
         categoryId: selectedCategory.id,
