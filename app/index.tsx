@@ -56,7 +56,7 @@ export default function Index() {
       } else if (!userRef.current) {
         router.replace('/(auth)/loginScreen');
       } else if (!profileCompleteRef.current) {
-        router.replace('/(auth)/completeProfile');
+        router.replace('/(auth)/completeProfile' as any);
       } else {
         router.replace('/(tabs)/home');
       }

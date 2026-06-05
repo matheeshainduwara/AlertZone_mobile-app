@@ -132,7 +132,7 @@ export default function TabLayout() {
 
   // Logged in but profile is incomplete → redirect to completeProfile
   if (!isProfileComplete) {
-    return <Redirect href="/(auth)/completeProfile" />;
+    return <Redirect href={"/(auth)/completeProfile" as any} />;
   }
 
   return (

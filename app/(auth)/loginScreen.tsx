@@ -319,7 +319,7 @@ export default function LoginScreen() {
         if (isProfileComplete) {
           router.replace('/(tabs)/home');
         } else {
-          router.replace('/(auth)/completeProfile');
+          router.replace('/(auth)/completeProfile' as any);
         }
       }, 1000);
 
