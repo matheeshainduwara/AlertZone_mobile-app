@@ -28,6 +28,7 @@ import Toast from 'react-native-toast-message';
 import { toastConfig } from '../../config/toastConfig';
 import SelectionModal from '../../components/SelectionModal';
 import { useAuth } from '../../config/authConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sriLankaGeographics } from '../../config/sriLankaRegions';
 import { useScrollContext } from '../../config/tabBarScrollContext';
 import { db, storage } from '../../services/firebase';
@@ -1349,6 +1350,13 @@ function SecurityModal({
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(firebaseAuth.currentUser, credential);
       await updatePassword(firebaseAuth.currentUser, newPassword);
+      
+      // Multi-device sync: update password version in Firestore and AsyncStorage
+      const newTimestamp = new Date().toISOString();
+      await AsyncStorage.setItem('lastPasswordChangeLocal', newTimestamp);
+      await updateDoc(doc(db, 'users', user.uid), {
+        lastPasswordChange: newTimestamp
+      });
       
       setPasswordSuccess('Password updated successfully!');
       setCurrentPassword('');

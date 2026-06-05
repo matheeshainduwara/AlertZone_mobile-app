@@ -284,6 +284,11 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
     - Added a native two-step confirmation alert using `Alert.alert` before triggering password reset email delivery.
     - Resolved standard secure entry keyboard backspace text deletion bugs on iOS/Android password fields by configuring `autoCapitalize="none"`, `autoCorrect={false}`, and `spellCheck={false}`.
 
+- **[2026-06-06] Multi-Device Password Change Sync:**
+    - Configured a real-time `onSnapshot` listener on the Firestore `users` collection to check password sync status dynamically.
+    - Implemented auto-logout synchronization by matching the Firestore `lastPasswordChange` timestamp against the local `lastPasswordChangeLocal` value stored in `AsyncStorage`.
+    - Automatically signs out other devices with an active session expired toast feedback when the password is changed elsewhere.
+
 ---
 
-*Last Updated: 2026-06-06 — Security Enhancements & Input Corrections*
+*Last Updated: 2026-06-06 — Security Enhancements, Input Corrections & Multi-device Sync*

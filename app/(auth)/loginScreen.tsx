@@ -143,6 +143,11 @@ export default function LoginScreen() {
 
         if (userDoc.exists()) {
           const userData = userDoc.data();
+          if (userData.lastPasswordChange) {
+            await AsyncStorage.setItem('lastPasswordChangeLocal', userData.lastPasswordChange);
+          } else {
+            await AsyncStorage.removeItem('lastPasswordChangeLocal');
+          }
           Toast.show({
             type: 'success',
             text1: 'Login Successful',
@@ -217,6 +222,11 @@ export default function LoginScreen() {
 
       if (userDoc.exists()) {
         const userData = userDoc.data();
+        if (userData.lastPasswordChange) {
+          await AsyncStorage.setItem('lastPasswordChangeLocal', userData.lastPasswordChange);
+        } else {
+          await AsyncStorage.removeItem('lastPasswordChangeLocal');
+        }
 
         Toast.show({
           type: 'success',
