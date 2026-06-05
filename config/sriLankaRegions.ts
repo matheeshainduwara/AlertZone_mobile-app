@@ -1,5 +1,42 @@
-// config/sriLankaRegions.ts
-// Comprehensive Sri Lankan geographic database mapping 9 Provinces -> 25 Districts -> 341 LGAs.
+export const PROVINCE_CODES: Record<string, string> = {
+  "Central": "1",
+  "Eastern": "2",
+  "North Central": "3",
+  "North Western": "4",
+  "Northern": "5",
+  "Sabaragamuwa": "6",
+  "Southern": "7",
+  "Uva": "8",
+  "Western": "9",
+};
+
+export const DISTRICT_CODES: Record<string, string> = {
+  "Ampara": "01",
+  "Anuradhapura": "02",
+  "Badulla": "03",
+  "Batticaloa": "04",
+  "Colombo": "05",
+  "Galle": "06",
+  "Gampaha": "07",
+  "Hambantota": "08",
+  "Jaffna": "09",
+  "Kalutara": "10",
+  "Kandy": "11",
+  "Kegalle": "12",
+  "Kilinochchi": "13",
+  "Kurunegala": "14",
+  "Mannar": "15",
+  "Matale": "16",
+  "Matara": "17",
+  "Moneragala": "18",
+  "Mullaitivu": "19",
+  "Nuwara Eliya": "20",
+  "Polonnaruwa": "21",
+  "Puttalam": "22",
+  "Ratnapura": "23",
+  "Trincomalee": "24",
+  "Vavuniya": "25",
+};
 
 export const sriLankaGeographics: Record<string, Record<string, string[]>> = {
   "Western": {

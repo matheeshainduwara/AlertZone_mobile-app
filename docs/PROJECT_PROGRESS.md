@@ -289,6 +289,11 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
     - Implemented auto-logout synchronization by matching the Firestore `lastPasswordChange` timestamp against the local `lastPasswordChangeLocal` value stored in `AsyncStorage`.
     - Automatically signs out other devices with an active session expired toast feedback when the password is changed elsewhere.
 
+- **[2026-06-06] Standardized Incident Report IDs:**
+    - Integrated alphabetical ascending mapping indices for the 9 provinces (1-9) and 25 districts (01-25) in Sri Lanka.
+    - Standardized report document IDs using the custom format `yyyymmddPDDXXXXX` constructed dynamically based on current local date and reverse-geocoded region codes.
+    - Implemented daily sequential numbering (`XXXXX`) by querying Firestore for the highest sequence number matching the day's region prefix.
+
 ---
 
-*Last Updated: 2026-06-06 — Security Enhancements, Input Corrections & Multi-device Sync*
+*Last Updated: 2026-06-06 — Incident Report ID Standardization*

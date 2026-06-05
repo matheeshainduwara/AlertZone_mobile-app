@@ -24,8 +24,13 @@ import {
   collection,
   doc,
   serverTimestamp,
-  updateDoc,
-  increment,
+  setDoc,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  documentId,
 } from 'firebase/firestore';
 import Toast from 'react-native-toast-message';
 
@@ -34,7 +39,7 @@ import { db } from '../../services/firebase';
 import { compressImage, isUnderSizeLimit, uploadFile } from '../../services/storage.service';
 import BlurLoadingOverlay from '../../components/BlurLoadingOverlay';
 import PhotoSourceModal from '../../components/PhotoSourceModal';
-import { resolveSrilankaRegion } from '../../config/sriLankaRegions';
+import { resolveSrilankaRegion, PROVINCE_CODES, DISTRICT_CODES } from '../../config/sriLankaRegions';
 
 // ─────────────────────────────────────────────
 // Constants
@@ -718,8 +723,44 @@ export default function ReportScreen() {
       }
 
       setUploadStatusText('Securing report details...');
+
+      // Generate standardized daily custom ID
+      const year = new Date().getFullYear();
+      const month = String(new Date().getMonth() + 1).padStart(2, '0');
+      const day = String(new Date().getDate()).padStart(2, '0');
+      const dateStr = `${year}${month}${day}`;
+      
+      const pCode = PROVINCE_CODES[resolvedProvince] || "0";
+      const dCode = DISTRICT_CODES[resolvedDistrict] || "00";
+      const idPrefix = `${dateStr}${pCode}${dCode}`;
+      
+      // Query the highest ID with this prefix to get next sequential number
+      const q = query(
+        collection(db, 'reports'),
+        where(documentId(), '>=', idPrefix + '00000'),
+        where(documentId(), '<=', idPrefix + '99999'),
+        orderBy(documentId(), 'desc'),
+        limit(1)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      let nextNumber = 1;
+      if (!querySnapshot.empty) {
+        const lastDocId = querySnapshot.docs[0].id;
+        // Last 5 characters of ID
+        const lastSeqStr = lastDocId.substring(idPrefix.length);
+        const lastSeqNum = parseInt(lastSeqStr, 10);
+        if (!isNaN(lastSeqNum)) {
+          nextNumber = lastSeqNum + 1;
+        }
+      }
+      
+      const seqStr = String(nextNumber).padStart(5, '0');
+      const customReportId = `${idPrefix}${seqStr}`;
+
       // 2. Add document
-      const docRef = await addDoc(collection(db, 'reports'), {
+      const reportDocRef = doc(db, 'reports', customReportId);
+      await setDoc(reportDocRef, {
         uid: user.uid,
         authorName: profile.fullName,
         title: selectedCategory.label,
@@ -762,7 +803,7 @@ export default function ReportScreen() {
           type: 'status_change',
           title: 'New Issue Received',
           body: `A new ${selectedCategory.label} Incident has been reported by ${profile.fullName} in ${locationAddress.split(',').slice(-2).join(',').trim() || 'unknown region'}.`,
-          reportId: docRef.id,
+          reportId: customReportId,
           isRead: false,
           createdAt: serverTimestamp(),
         });
@@ -771,7 +812,7 @@ export default function ReportScreen() {
       }
 
       setUploadStatusText('Report submitted successfully!');
-      setSubmittedRefId(docRef.id);
+      setSubmittedRefId(customReportId);
     } catch (e: any) {
       console.error('❌ Report submission error:', e);
       Toast.show({
