@@ -18,6 +18,7 @@
 | Phase 4: Notifications | 🟢 Done | expo-notifications plugin ✅, push tokens ✅, foreground listeners ✅, in-app Notification Center ✅ |
 | Phase 5: Badge System | 🟢 Done | Points awarded on ASSIGNED (+10 pts), 12 real badges, badge showcase screen ✅ |
 | Phase 6: Polish & Launch | 🟢 Done | Animated splash gate, onboarding seen flag, and 7 critical/medium APK readiness fixes ✅ |
+| Phase 7: Google Sign-In & Complete Profile | 🟢 Done | Native Google Sign-In integrated, profile completion flow enforced with redirection guards, and path type assertions added ✅ |
 
 ---
 
@@ -49,6 +50,10 @@
 - [x] Global network status gate (`NetworkStatusGate`) with bottom sheet and manual "Check Connection" retry controls ✅
 - [x] Logout functionality with confirmation modal
 - [x] Password validation (min 8 chars, uppercase, number)
+- [x] Native Google Sign-In on Login & Signup screens ✅
+- [x] Complete Profile page (`completeProfile.tsx`) requesting required details for incomplete profile users ✅
+- [x] Redirection guards on Splash Screen & Tab Layout preventing access to home/map/report tabs for users with incomplete profiles ✅
+- [x] Graceful Cancel & Log Out button on Complete Profile screen to switch accounts safely ✅
 
 ### Profile (Partially Functional)
 - [x] Profile screen reads real data from Firestore via `useAuth`
@@ -184,7 +189,7 @@
 - [x] Badge calculation and display from real data ✅
 - [x] Gamification — points awarded on ASSIGNED, badge showcase screen ✅
 - [ ] Area-based report filtering
-- [ ] Google Sign-In (planned for later phase)
+- [x] Google Sign-In (integrated native auth) ✅
 - [ ] Report search functionality
 - [x] Notification history screen ✅
 - [ ] Report deletion/editing by citizen
@@ -204,7 +209,6 @@
 
 | Issue | Severity | Location | Notes |
 |---|---|---|---|
-| Google Sign-In button is a no-op | Low | `loginScreen.tsx`, `signupScreen.tsx` | Planned for future phase |
 | `@ts-ignore` on Firebase auth import | Medium | `services/firebase.ts` | `getReactNativePersistence` type issue |
 | Toast outside AuthProvider in root layout | Low | `app/_layout.tsx` | Toast renders as sibling, not child of AuthProvider |
 | Password icon wrong on signup (uses call icon) | Low | `signupScreen.tsx:234` | Should be `lock-closed-outline` |

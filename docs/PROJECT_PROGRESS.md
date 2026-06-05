@@ -259,4 +259,22 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
 
 ---
 
-*Last Updated: 2026-06-01 — Gamification System (Points · Badges · Badge Showcase Screen)*
+## 🔐 Phase 7: Google Sign-In & Complete Profile Integration
+**Objective:** Enable native Google Sign-In and enforce that all users (including Google users) provide required profile details (phone, NIC, province, district, LGA) before accessing the app.
+
+- **[2026-06-05] Google Sign-In Integration:**
+    - Configured `@react-native-google-signin/google-signin` native dependencies in `package.json` and registered the config plugin in `app.json`.
+    - Wired **Google Login** to both [loginScreen.tsx](file:///e:/AlertZone_New/alertzone-mobile-app/app/(auth)/loginScreen.tsx) and [signupScreen.tsx](file:///e:/AlertZone_New/alertzone-mobile-app/app/(auth)/signupScreen.tsx). Tapping the button signs in via Google OAuth, gets the ID token, and authenticates with Firebase.
+    - Implemented Firestore check: if a new user logs in via Google, a partial profile document (fullName + email) is created in Firestore `users`.
+- **[2026-06-05] Complete Profile Flow:**
+    - Created a premium [completeProfile.tsx](file:///e:/AlertZone_New/alertzone-mobile-app/app/(auth)/completeProfile.tsx) page requesting required details: Full Name, Phone number (Sri Lankan format validated), NIC (validated), Province, District, and LGA.
+    - Integrated native regional searchable modals using the app's `SelectionModal` and `sriLankaGeographics` data.
+    - Added a **Cancel & Log Out** button to let users exit the screen safely and switch accounts.
+- **[2026-06-05] Routing guards and typed routing:**
+    - Updated `AuthContext` in [authConfig.tsx](file:///e:/AlertZone_New/alertzone-mobile-app/config/authConfig.tsx) to dynamically compute and expose `isProfileComplete` status.
+    - Secured the splash gate [index.tsx](file:///e:/AlertZone_New/alertzone-mobile-app/app/index.tsx) and tabs layout [_layout.tsx](file:///e:/AlertZone_New/alertzone-mobile-app/app/(tabs)/_layout.tsx) to redirect authenticated users with incomplete profiles to `/completeProfile`.
+    - Cast route path strings as `any` (e.g. `'/(auth)/completeProfile' as any`) to resolve TypeScript route typings issues before the Expo development server regenerates the type definitions.
+
+---
+
+*Last Updated: 2026-06-05 — Google Sign-In & Complete Profile Integration*
