@@ -334,6 +334,12 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
     - Built using standard inline React Native styles to maintain style standardization rules.
     - Configured visible count to reset on any filter change (category, status, date).
 
+- **[2026-06-06] Offline Startup Routing & Non-Blocking Login Notice:**
+    - Modified splash screen (`index.tsx`) to permit navigation even when offline, allowing users to reach the login screen.
+    - Enhanced `NetworkStatusGate.tsx` to detect segment routes (`useSegments()`).
+    - Configured the gate to render a non-blocking top notification banner ("No Internet Connection") on auth/onboarding screens instead of the full-screen locking bottom sheet.
+    - Ensured that when connection is restored, the banner transitions to "Connection Restored" (green) and automatically slides out of view.
+
 ---
 
-*Last Updated: 2026-06-06 — Pagination & Date Filtering*
+*Last Updated: 2026-06-06 — Offline Routing & Notification Banner*

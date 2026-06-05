@@ -5,7 +5,6 @@ import {
   Animated,
   Easing,
   StyleSheet,
-  Dimensions,
   BackHandler,
   Pressable,
   DeviceEventEmitter,
@@ -13,11 +12,18 @@ import {
 import NetInfo from '@react-native-community/netinfo';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSegments } from 'expo-router';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_HEIGHT = 240;
 
 export default function NetworkStatusGate() {
+  const segments = useSegments() as string[];
+  const insets = useSafeAreaInsets();
+  
+  const isSplash = segments.length === 0;
+  const isAuthScreen = segments.includes('(auth)') || segments.includes('onboarding');
+
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [wasOffline, setWasOffline] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -210,12 +216,48 @@ export default function NetworkStatusGate() {
     outputRange: ['0deg', '360deg'],
   });
 
-  if (!visible) return null;
+  if (!visible || isSplash) return null;
 
   const isReconnecting = isConnected === false;
   const sheetBg = isReconnecting ? '#7F1D1D' : '#14532D'; // Crimson Red vs Forest Green
   const sheetBorder = isReconnecting ? '#B91C1C' : '#16A34A';
   const subtitleColor = isReconnecting ? '#FCA5A5' : '#A7F3D0';
+
+  if (isAuthScreen) {
+    // Elegant top banner for login/onboarding screens
+    const bannerTranslateY = sheetTranslateY.interpolate({
+      inputRange: [0, SHEET_HEIGHT],
+      outputRange: [0, -100 - (insets.top > 0 ? insets.top : 0)],
+    });
+
+    return (
+      <View style={[StyleSheet.absoluteFill, { zIndex: 9999 }]} pointerEvents="box-none">
+        <Animated.View
+          style={[
+            styles.topBannerContainer,
+            {
+              transform: [{ translateY: bannerTranslateY }],
+              backgroundColor: sheetBg,
+              borderBottomColor: sheetBorder,
+              paddingTop: insets.top > 0 ? insets.top + 6 : 12,
+            },
+          ]}
+        >
+          <View style={styles.topBannerContent}>
+            <Ionicons
+              name={isReconnecting ? "cloud-offline-outline" : "checkmark-circle-outline"}
+              size={14}
+              color="#FFFFFF"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.topBannerText}>
+              {isReconnecting ? "No Internet Connection" : "Connection Restored"}
+            </Text>
+          </View>
+        </Animated.View>
+      </View>
+    );
+  }
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
@@ -364,6 +406,33 @@ const styles = StyleSheet.create({
   },
   retryButtonText: {
     color: '#7F1D1D',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  topBannerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 12,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1.5,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  topBannerContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  topBannerText: {
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
     letterSpacing: 0.3,

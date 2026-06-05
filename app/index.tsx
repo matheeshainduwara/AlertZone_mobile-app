@@ -88,9 +88,8 @@ export default function Index() {
     const unsubscribe = NetInfo.addEventListener(state => {
       const offline = state.isConnected === false;
       setIsOffline(offline);
-      if (state.isConnected === true) {
-        tryNavigate();
-      }
+      // Always attempt navigation once loaded (online or offline)
+      tryNavigate();
     });
     return () => unsubscribe();
   }, []);
