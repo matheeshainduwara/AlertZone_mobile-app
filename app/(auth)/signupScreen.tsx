@@ -22,8 +22,15 @@ import SelectionModal from '../../components/SelectionModal';
 import { createUserWithEmailAndPassword, sendEmailVerification, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../../services/firebase';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../../config/authConfig';
+
+let GoogleSignin: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  GoogleSignin = require('@react-native-google-signin/google-signin').GoogleSignin;
+} catch {
+  console.warn('⚠️ Google Sign-In not available in this environment');
+}
 
 
 export default function RegisterScreen() {
@@ -61,10 +68,12 @@ export default function RegisterScreen() {
 
   // Configure Google Sign-In
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: '52846862990-munbgn67do5e6v9ehr20d3edclao5m6g.apps.googleusercontent.com',
-      offlineAccess: true,
-    });
+    if (GoogleSignin) {
+      GoogleSignin.configure({
+        webClientId: '52846862990-munbgn67do5e6v9ehr20d3edclao5m6g.apps.googleusercontent.com',
+        offlineAccess: true,
+      });
+    }
   }, []);
 
 const validatePassword = (password:string) => {
@@ -176,6 +185,14 @@ const validatePassword = (password:string) => {
   };
 
   const handleGoogleSignUp = async () => {
+    if (!GoogleSignin) {
+      Toast.show({
+        type: 'error',
+        text1: 'Not Supported in Expo Go',
+        text2: 'Please test this on the compiled native APK build.',
+      });
+      return;
+    }
     setLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
