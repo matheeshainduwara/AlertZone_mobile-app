@@ -1,7 +1,7 @@
 # Current Status — AlertZone Mobile App
 > **Full Log:** [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)
 
-> **Last Updated:** 2026-06-06 (Google Sign-in Cleanup, Offline Caching, Preferences Sync, and Biometrics Fixes)
+> **Last Updated:** 2026-06-06 (Google Sign-in Cleanup, Caching, Preferences Sync, Biometrics, and Upvote/Exclusion Constraints)
 >
 > This document tracks what is done, what is broken, and what remains. Agents MUST read this before starting work.
 
@@ -25,9 +25,9 @@
 ## What IS Working ✅
 
 ### Upvotes & Community Comments (Fully Functional)
-- [x] Vibrantly redesigned, fully pressable upvote banner block (`#0f93f2ff`)
-- [x] Custom interactive confirmation modal for upvoting with optional commenting support
-- [x] Custom retract confirmation modal when removing an upvote
+- [x] Vibrantly redesigned, fully pressable upvote banner block (automatically locked if report is not in pending stage)
+- [x] Custom interactive confirmation modal for upvoting with optional commenting support (restricted to pending stage)
+- [x] Custom retract confirmation modal when removing an upvote (restricted to pending stage)
 - [x] Fully keyboard-avoiding flex layout for the community comments input bar
 - [x] Avatar and user name resolution for comments made by current user, highlighted with `(You)` label and teal border
 - [x] Limit initial comment feed to 5 entries with a custom "View All" toggle button
@@ -86,14 +86,14 @@
 
 ### Home Screen (`home.tsx`)
 - [ ] Browse Categories — hardcoded array, not from Firestore
-- [x] Nearby Issues — live Firestore subscription filtered to user's alert radius ✅
-- [x] Latest Updates — live Firestore subscription ✅
+- [x] Nearby Issues — live Firestore subscription filtered to user's alert radius (resolved/rejected reports excluded) ✅
+- [x] Latest Updates — live Firestore subscription (resolved/rejected reports excluded) ✅
 - [x] Notification bell badge — wired to real Firestore unread count ✅
 - [x] **Pull-to-Refresh** — re-fetches GPS location and refreshes nearby issues + updates ✅
 
 ### Map Screen (`map.tsx`) ✅ LIVE
-- [x] Issue pins — live Firestore subscription (`onSnapshot`) ✅
-- [x] Filter chips by category — filters Firestore data in real-time ✅
+- [x] Issue pins — live Firestore subscription (`onSnapshot`, resolved/rejected reports excluded) ✅
+- [x] Filter chips by category — filters active (non-resolved/rejected) Firestore data in real-time ✅
 - [x] Search bar — filters by title or address ✅
 - [x] Category Counts — shows number of reports by type within radius ✅
 - [x] Navigation Support — centers on specific report if params provided ✅

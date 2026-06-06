@@ -176,6 +176,7 @@ export default function MapScreen() {
         .map((d) => {
           const data = d.data();
           if (!data.location?.latitude || !data.location?.longitude) return null;
+          if (data.status === 'RESOLVED' || data.status === 'REJECTED') return null;
           return {
             id: d.id,
             title: data.title ?? data.category ?? 'Report',

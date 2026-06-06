@@ -5,8 +5,6 @@ import {
   ScrollView,
   Pressable,
   Image,
-  FlatList,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -258,22 +256,25 @@ export default function HomeScreen() {
       orderBy('createdAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      const pins: ReportPin[] = snap.docs.map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          title: data.title ?? data.category ?? 'Report',
-          categoryId: data.categoryId ?? 'road_traffic',
-          categoryIcon: data.categoryIcon ?? 'warning-outline',
-          categoryColor: data.categoryColor ?? '#4CC2D1',
-          latitude: data.location?.latitude,
-          longitude: data.location?.longitude,
-          status: data.status ?? 'PENDING',
-          address: data.location?.address ?? '',
-          image: data.imageUrls && data.imageUrls.length > 0 ? data.imageUrls[0] : undefined,
-          createdAt: data.createdAt,
-        } as ReportPin;
-      }).filter(p => p.latitude && p.longitude);
+      const pins: ReportPin[] = snap.docs
+        .map(d => {
+          const data = d.data();
+          if (data.status === 'RESOLVED' || data.status === 'REJECTED') return null;
+          return {
+            id: d.id,
+            title: data.title ?? data.category ?? 'Report',
+            categoryId: data.categoryId ?? 'road_traffic',
+            categoryIcon: data.categoryIcon ?? 'warning-outline',
+            categoryColor: data.categoryColor ?? '#4CC2D1',
+            latitude: data.location?.latitude,
+            longitude: data.location?.longitude,
+            status: data.status ?? 'PENDING',
+            address: data.location?.address ?? '',
+            image: data.imageUrls && data.imageUrls.length > 0 ? data.imageUrls[0] : undefined,
+            createdAt: data.createdAt,
+          } as ReportPin;
+        })
+        .filter((p): p is ReportPin => p !== null && p.latitude !== undefined && p.longitude !== undefined);
       
       setReports(pins);
     }, (err) => {
@@ -555,7 +556,7 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>My Upvoted Reports</Text>
                 <Text style={{ color: '#5A7D8A', fontSize: 12, marginTop: 2 }}>
-                  Reports you've supported in your community
+                  Reports you&apos;ve supported in your community
                 </Text>
               </View>
               <View style={{ alignItems: 'center' }}>

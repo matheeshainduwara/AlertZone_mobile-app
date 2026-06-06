@@ -4,7 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { User } from 'firebase/auth';
 import {
-  addDoc,
   collection,
   doc,
   increment,
@@ -243,7 +242,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
 
   // ── Upvote press flow ──
   const handleUpvotePress = useCallback(() => {
-    if (!user || !report || isUpvoting || report.uid === user.uid) return;
+    if (!user || !report || isUpvoting || report.uid === user.uid || report.status !== 'PENDING') return;
     if (hasUpvoted) {
       setUpvoteModalType('remove');
     } else {
@@ -253,7 +252,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
   }, [user, report, hasUpvoted, isUpvoting]);
 
   const performUpvote = async (shouldUpvote: boolean, commentText?: string) => {
-    if (!user || !report || report.uid === user.uid) return;
+    if (!user || !report || report.uid === user.uid || report.status !== 'PENDING') return;
     setIsUpvoting(true);
     setUpvoteModalType(null);
     try {
@@ -365,7 +364,7 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
 
   // ── Post comment ──
   const handlePostComment = useCallback(async () => {
-    if (!user || !report || !newComment.trim() || isPostingComment || report.uid === user.uid) return;
+    if (!user || !report || !newComment.trim() || isPostingComment || report.uid === user.uid || report.status !== 'PENDING') return;
     setIsPostingComment(true);
     try {
       const batch = writeBatch(db);
@@ -616,29 +615,77 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                   {/* ── Upvote Bar (Make whole button pressable + show as of date/time) ── */}
                   {(() => {
                     const isOwnReport = report && user && report.uid === user.uid;
+                    const isNotPending = report && report.status !== 'PENDING';
+                    const isUpvoteDisabled = isOwnReport || isNotPending || isUpvoting || !user;
+
+                    let buttonText = 'Upvote this Issue?';
+                    let iconName = 'arrow-up-circle-outline';
+                    let iconColor = '#ffffffff';
+                    let statusBg = '#0a8ac5ff';
+                    let buttonBg = '#0f93f2ff';
+                    let buttonBorder = '#1E3347';
+                    let textStyleColor = '#FFFFFF';
+
+                    if (isOwnReport) {
+                      buttonText = 'You cannot upvote your own report';
+                      iconName = 'lock-closed-outline';
+                      iconColor = '#5A7D8A';
+                      statusBg = '#1E3347';
+                      buttonBg = '#1A2F3B';
+                      buttonBorder = '#223847';
+                      textStyleColor = '#5A7D8A';
+                    } else if (isNotPending) {
+                      buttonBg = '#1A2F3B';
+                      buttonBorder = '#223847';
+                      textStyleColor = '#5A7D8A';
+                      if (hasUpvoted) {
+                        buttonText = 'You have upvoted this issue (Cannot revoke)';
+                        iconName = 'checkmark-circle-outline';
+                        iconColor = '#34D399';
+                        statusBg = '#04523630';
+                      } else {
+                        buttonText = 'Upvoting is only allowed in pending stage';
+                        iconName = 'lock-closed-outline';
+                        iconColor = '#5A7D8A';
+                        statusBg = '#1E3347';
+                      }
+                    } else if (hasUpvoted) {
+                      buttonText = 'You upvoted this! Tap to retract.';
+                      iconName = 'checkmark-circle';
+                      iconColor = '#34D399';
+                      statusBg = '#045236ff';
+                      buttonBg = 'rgba(15, 147, 242, 0.08)';
+                      buttonBorder = 'rgba(15, 147, 242, 0.3)';
+                      textStyleColor = '#4CC2D1';
+                    }
+
                     return (
                       <Pressable
                         onPress={handleUpvotePress}
-                        disabled={isUpvoting || !user || isOwnReport}
+                        disabled={isUpvoteDisabled}
                         style={({ pressed }) => ({
                           flexDirection: 'row',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          backgroundColor: isOwnReport ? '#1A2F3B' : (pressed ? '#007cc0' : '#0f93f2ff'),
+                          backgroundColor: isUpvoteDisabled
+                            ? buttonBg
+                            : (pressed 
+                                ? (hasUpvoted ? 'rgba(15, 147, 242, 0.18)' : '#007cc0') 
+                                : buttonBg),
                           borderRadius: 16,
                           paddingHorizontal: 20,
                           paddingVertical: 16,
                           borderWidth: 1,
-                          borderColor: isOwnReport ? '#223847' : '#1E3347',
+                          borderColor: buttonBorder,
                           gap: 12,
-                          opacity: isOwnReport ? 0.7 : 1,
+                          opacity: isUpvoteDisabled ? 0.8 : 1,
                         })}
                       >
                         <View style={{
                           flexDirection: 'row',
                           alignItems: 'center',
                           gap: 12,
-                          backgroundColor: isOwnReport ? '#1E3347' : (hasUpvoted ? '#045236ff' : '#0a8ac5ff'),
+                          backgroundColor: statusBg,
                           paddingHorizontal: 12,
                           paddingVertical: 8,
                           borderRadius: 12,
@@ -648,14 +695,14 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                             <ActivityIndicator size="small" color="#FFFFFF" />
                           ) : (
                             <Ionicons
-                              name={isOwnReport ? 'lock-closed-outline' : (hasUpvoted ? 'checkmark-circle' : 'arrow-up-circle-outline')}
+                              name={iconName as any}
                               size={28}
-                              color={isOwnReport ? '#5A7D8A' : (hasUpvoted ? '#34D399' : '#ffffffff')}
+                              color={iconColor}
                             />
                           )}
                           <View style={{ flexShrink: 1, flex: 1 }}>
-                            <Text style={{ color: isOwnReport ? '#5A7D8A' : '#FFFFFF', fontWeight: isOwnReport ? '500' : '400', fontSize: 15 }} numberOfLines={1}>
-                              {isOwnReport ? 'You cannot upvote your own report' : (hasUpvoted ? 'You have already upvoted this Issue!' : 'Upvote this Issue?')}
+                            <Text style={{ color: textStyleColor, fontWeight: isOwnReport || isNotPending ? '500' : '400', fontSize: 15 }} numberOfLines={1}>
+                              {buttonText}
                             </Text>
                           </View>
                         </View>
@@ -874,6 +921,16 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
               {/* ── Comment Input (fixed above keyboard via flex layout) ── */}
               {(() => {
                 const isOwnReport = report && user && report.uid === user.uid;
+                const isNotPending = report && report.status !== 'PENDING';
+                const isCommentDisabled = isOwnReport || isNotPending;
+
+                let placeholderText = "Add a community comment…";
+                if (isOwnReport) {
+                  placeholderText = "You cannot comment on your own report";
+                } else if (isNotPending) {
+                  placeholderText = "Commenting is only allowed in pending stage";
+                }
+
                 return (
                   <View style={{
                     paddingBottom: Math.max(insets.bottom, 16),
@@ -883,32 +940,32 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                   }}>
                     <View style={{
                       flexDirection: 'row', alignItems: 'center', gap: 10,
-                      backgroundColor: isOwnReport ? '#0A1820' : '#111E27', borderRadius: 20,
+                      backgroundColor: isCommentDisabled ? '#0A1820' : '#111E27', borderRadius: 20,
                       paddingHorizontal: 12, paddingVertical: 8,
-                      borderWidth: 1, borderColor: isOwnReport ? '#1E3347' : '#4CC2D1',
-                      opacity: isOwnReport ? 0.7 : 1,
+                      borderWidth: 1, borderColor: isCommentDisabled ? '#1E3347' : '#4CC2D1',
+                      opacity: isCommentDisabled ? 0.7 : 1,
                     }}>
                       <View style={{
                         width: 28, height: 28, borderRadius: 14,
-                        backgroundColor: isOwnReport ? '#1A2D3D' : '#1E3A44',
+                        backgroundColor: isCommentDisabled ? '#1A2D3D' : '#1E3A44',
                         alignItems: 'center', justifyContent: 'center', overflow: 'hidden'
                       }}>
-                        {profile?.avatarUrl && !isOwnReport ? (
+                        {profile?.avatarUrl && !isCommentDisabled ? (
                           <Image source={{ uri: profile.avatarUrl }} style={{ width: 28, height: 28 }} resizeMode="cover" />
                         ) : (
-                          <Ionicons name={isOwnReport ? "lock-closed-outline" : "person-outline"} size={14} color={isOwnReport ? "#5A7D8A" : "#4CC2D1"} />
+                          <Ionicons name={isCommentDisabled ? "lock-closed-outline" : "person-outline"} size={14} color={isCommentDisabled ? "#5A7D8A" : "#4CC2D1"} />
                         )}
                       </View>
                       <TextInput
                         value={newComment}
                         onChangeText={setNewComment}
-                        editable={!isOwnReport}
-                        placeholder={isOwnReport ? "You cannot comment on your own report" : "Add a community comment…"}
+                        editable={!isCommentDisabled}
+                        placeholder={placeholderText}
                         placeholderTextColor="#5A7D8A"
                         multiline
                         maxLength={280}
                         style={{
-                          flex: 1, color: isOwnReport ? '#5A7D8A' : 'white', fontSize: 14,
+                          flex: 1, color: isCommentDisabled ? '#5A7D8A' : 'white', fontSize: 14,
                           maxHeight: 80,
                           paddingTop: Platform.OS === 'ios' ? 4 : 0,
                           paddingBottom: Platform.OS === 'ios' ? 4 : 0,
@@ -916,17 +973,17 @@ export default function ReportDetailSheet({ reportId, onClose }: Props) {
                       />
                       <Pressable
                         onPress={handlePostComment}
-                        disabled={!newComment.trim() || isPostingComment || isOwnReport}
+                        disabled={!newComment.trim() || isPostingComment || isCommentDisabled}
                         style={({ pressed }) => ({
                           width: 36, height: 36, borderRadius: 18,
-                          backgroundColor: isOwnReport ? '#1E3347' : (newComment.trim() ? (pressed ? '#3BAFBD' : '#4CC2D1') : '#e8e8e8ff'),
+                          backgroundColor: isCommentDisabled ? '#1E3347' : (newComment.trim() ? (pressed ? '#3BAFBD' : '#4CC2D1') : '#e8e8e8ff'),
                           alignItems: 'center', justifyContent: 'center',
                         })}
                       >
                         {isPostingComment ? (
                           <ActivityIndicator size="small" color="#ffffffff" />
                         ) : (
-                          <Ionicons name="send" size={16} color={isOwnReport ? '#5A7D8A' : (newComment.trim() ? '#ffffffff' : '#2D4F5C')} />
+                          <Ionicons name="send" size={16} color={isCommentDisabled ? '#5A7D8A' : (newComment.trim() ? '#ffffffff' : '#2D4F5C')} />
                         )}
                       </Pressable>
                     </View>

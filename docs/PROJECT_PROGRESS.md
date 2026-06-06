@@ -369,6 +369,11 @@ This document tracks the end-to-end development journey of the AlertZone mobile 
     - Implemented a transient `justLoggedOut` flag in `AsyncStorage` when explicitly logging out or when a session expires due to a password change.
     - Modified the login screen biometric mount effect to check, clear, and return early when `justLoggedOut` is detected.
 
+- **[2026-06-06] Upvote & Comment Constraints + Resolved/Rejected Map Exclusion (`ReportDetailSheet.tsx`, `map.tsx`, `home.tsx`):**
+    - Restricted the ability to upvote and comment on issues to only the `PENDING` stage. Tapping upvote or comments on Assigned, Fixing, Resolved, or Rejected reports is disabled and shows a locked indication.
+    - Excluded reports with `RESOLVED` or `REJECTED` status from rendering on the Live Map.
+    - Excluded reports with `RESOLVED` or `REJECTED` status from the Home tab's Nearby Issues and Latest Updates.
+
 ---
 
-*Last Updated: 2026-06-06 — Google Sign-in Cleanup, Offline Caching, Preference Sync, & Biometrics Fix*
+*Last Updated: 2026-06-06 — Google Sign-in Cleanup, Caching, Preference Sync, Biometrics, & Upvote/Exclusion Constraints*

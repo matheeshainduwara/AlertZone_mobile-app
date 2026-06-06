@@ -44,7 +44,7 @@ import { resolveSrilankaRegion, PROVINCE_CODES, DISTRICT_CODES } from '../../con
 const CATEGORIES = [
   { id: 'road_traffic',      label: 'Road & Traffic',     icon: 'car-outline',          color: '#4CC2D1', bg: '#0D2A35', examples: 'Potholes, signals, noise' },
   { id: 'water_drainage',    label: 'Water & Drainage',   icon: 'water-outline',         color: '#60A5FA', bg: '#0D1A3D', examples: 'Leaks, floods, pipes' },
-  { id: 'waste_environment', label: 'Waste & Environment.',       icon: 'trash-outline',         color: '#34D399', bg: '#0D3D25', examples: 'Litter, illegal dumping' },
+  { id: 'waste_environment', label: 'Waste & Environment',       icon: 'trash-outline',         color: '#34D399', bg: '#0D3D25', examples: 'Litter, illegal dumping' },
   { id: 'social_safety',     label: 'Social Safety',      icon: 'shield-outline',        color: '#A78BFA', bg: '#2D1F4A', examples: 'Lighting, vandalism' },
   { id: 'bridge_structural', label: 'Bridge & Structural',icon: 'git-network-outline',   color: '#F59E0B', bg: '#3D2E0A', examples: 'Damaged bridges, public buildings' },
   { id: 'other',             label: 'Other',              icon: 'help-circle-outline',   color: '#94A3B8', bg: '#1E293B', examples: 'Any other infrastructure issue', wide: true },

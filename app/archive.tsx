@@ -71,7 +71,7 @@ const CATEGORIES = [
   { id: 'all',               label: 'All Categories',     icon: 'grid-outline',          color: '#4CC2D1' },
   { id: 'road_traffic',      label: 'Road & Traffic',     icon: 'car-outline',          color: '#4CC2D1' },
   { id: 'water_drainage',    label: 'Water & Drainage',   icon: 'water-outline',         color: '#60A5FA' },
-  { id: 'waste_environment', label: 'Waste & Environment.',icon: 'trash-outline',        color: '#34D399' },
+  { id: 'waste_environment', label: 'Waste & Environment',icon: 'trash-outline',        color: '#34D399' },
   { id: 'social_safety',     label: 'Social Safety',      icon: 'shield-outline',        color: '#A78BFA' },
   { id: 'bridge_structural', label: 'Bridge & Structural',icon: 'git-network-outline',   color: '#F59E0B' },
   { id: 'other',             label: 'Other',              icon: 'help-circle-outline',   color: '#94A3B8' },
