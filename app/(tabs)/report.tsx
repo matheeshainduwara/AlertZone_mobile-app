@@ -730,20 +730,19 @@ export default function ReportScreen() {
       const dCode = DISTRICT_CODES[resolvedDistrict] || "00";
       const idPrefix = `${dateStr}${pCode}${dCode}`;
       
-      // Query reports matching current date, province, and district (equality filters only)
+      // Query reports matching current date (globally across all regions)
       const q = query(
         collection(db, 'reports'),
-        where('reportDate', '==', dateStr),
-        where('location.province', '==', resolvedProvince),
-        where('location.district', '==', resolvedDistrict)
+        where('reportDate', '==', dateStr)
       );
       
       const querySnapshot = await getDocs(q);
       let nextNumber = 1;
       querySnapshot.forEach((doc) => {
         const docId = doc.id;
-        if (docId.startsWith(idPrefix) && docId.length === idPrefix.length + 5) {
-          const lastSeqStr = docId.substring(idPrefix.length);
+        // docId format: yyyymmddPDDXXXXX where yyyymmdd is dateStr
+        if (docId.length === 16 && docId.startsWith(dateStr)) {
+          const lastSeqStr = docId.substring(11); // Last 5 digits start at index 11
           const lastSeqNum = parseInt(lastSeqStr, 10);
           if (!isNaN(lastSeqNum) && lastSeqNum >= nextNumber) {
             nextNumber = lastSeqNum + 1;

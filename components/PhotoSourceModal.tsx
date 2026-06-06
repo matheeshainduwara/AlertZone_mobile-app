@@ -43,13 +43,32 @@ export default function PhotoSourceModal({
                 onSelectCamera();
                 onClose();
               }}
-              className="flex-row items-center p-4 mb-4 rounded-2xl active:opacity-75"
-              style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 16,
+                marginBottom: 16,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+              }}
+              className="active:opacity-75"
             >
-              <View className="w-12 h-12 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: colors.border }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16,
+                  backgroundColor: colors.border,
+                }}
+              >
                 <Ionicons name="camera" size={24} color={colors.primary} />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Text className="font-bold text-base" style={{ color: colors.text }}>Take Photo</Text>
                 <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Use camera to capture live evidence</Text>
               </View>
@@ -62,13 +81,32 @@ export default function PhotoSourceModal({
                 onSelectGallery();
                 onClose();
               }}
-              className="flex-row items-center p-4 mb-6 rounded-2xl active:opacity-75"
-              style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 16,
+                marginBottom: 24,
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+              }}
+              className="active:opacity-75"
             >
-              <View className="w-12 h-12 rounded-xl items-center justify-center mr-4" style={{ backgroundColor: colors.border }}>
+              <View
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16,
+                  backgroundColor: colors.border,
+                }}
+              >
                 <Ionicons name="image" size={24} color={colors.primary} />
               </View>
-              <View className="flex-1">
+              <View style={{ flex: 1 }}>
                 <Text className="font-bold text-base" style={{ color: colors.text }}>Choose from Gallery</Text>
                 <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Select existing photos from library</Text>
               </View>
