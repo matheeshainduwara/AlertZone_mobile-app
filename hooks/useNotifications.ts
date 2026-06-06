@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../config/authConfig';
-import { registerForPushNotificationsAsync } from '../services/notification.service';
+import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } from '../services/notification.service';
 import { isRunningInExpoGo } from 'expo';
 
 const isExpoGo = isRunningInExpoGo();
@@ -11,7 +11,7 @@ const isExpoGo = isRunningInExpoGo();
  * To be called in the root layout of the app.
  */
 export function useNotifications() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const router = useRouter();
   
   const notificationListener = useRef<any>(null);
@@ -26,8 +26,13 @@ export function useNotifications() {
 
     const Notifications = require('expo-notifications');
 
-    if (user?.uid) {
-      registerForPushNotificationsAsync(user.uid);
+    if (user?.uid && profile) {
+      const isEnabled = profile.notificationsEnabled ?? true;
+      if (isEnabled) {
+        registerForPushNotificationsAsync(user.uid);
+      } else {
+        unregisterPushNotificationsAsync(user.uid);
+      }
     }
 
     // 2. Listen for notifications that are received while the app is open
@@ -66,5 +71,5 @@ export function useNotifications() {
         responseListener.current.remove();
       }
     };
-  }, [user?.uid]);
+  }, [user?.uid, profile?.notificationsEnabled]);
 }
