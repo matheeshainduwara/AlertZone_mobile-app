@@ -5,6 +5,7 @@ import { auth, db } from '../services/firebase';
 import NetInfo from '@react-native-community/netinfo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { unregisterPushNotificationsAsync } from '../services/notification.service';
 
 // ── Types ──
 export interface UserProfile {
@@ -123,6 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Logout
   const logout = async () => {
+    if (user) {
+      try {
+        await unregisterPushNotificationsAsync(user.uid);
+      } catch (e) {
+        console.error('Error unregistering push notifications on logout:', e);
+      }
+    }
     try {
       await AsyncStorage.setItem('justLoggedOut', 'true');
     } catch (e) {
@@ -172,6 +180,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 await AsyncStorage.setItem('justLoggedOut', 'true');
               } catch (e) {
                 console.error('Error setting justLoggedOut flag during password mismatch:', e);
+              }
+              if (user) {
+                try {
+                  await unregisterPushNotificationsAsync(user.uid);
+                } catch (e) {
+                  console.error('Error unregistering push notifications on session expiration:', e);
+                }
               }
               await signOut(auth);
               setProfile(null);
