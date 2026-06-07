@@ -1,7 +1,7 @@
 # Current Status — AlertZone Mobile App
 > **Full Log:** [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)
 
-> **Last Updated:** 2026-06-06 (Report Card Photo Thumbnails, Address Wrap, Details Category Removal, Nearby Issues Filters & Vertical List, Google Sign-in Cleanup, Caching, Preferences Sync, Biometrics, Upvote Constraints)
+> **Last Updated:** 2026-06-07 (Subtle status bar gradient overlay, Rule of Hooks fix in report screen, Report Card Photo Thumbnails, Address Wrap, Details Category Removal, Nearby Issues Filters & Vertical List, Google Sign-in Cleanup, Caching, Preferences Sync, Biometrics, Upvote Constraints)
 >
 > This document tracks what is done, what is broken, and what remains. Agents MUST read this before starting work.
 
@@ -79,6 +79,7 @@
 - [x] Custom toast configuration (success + error styles)
 - [x] Keyboard-aware forms (KeyboardAvoidingView)
 - [x] Loading states on buttons and screens
+- [x] Subtle status bar gradient overlay in light and dark modes to prevent scrolling content from showing through the status bar content (excluded on map and auth/onboarding screens) ✅
 
 ---
 

@@ -214,7 +214,7 @@ alertzone-mobile-app/
 
 ### After Completing Work
 
-1. **Update `docs/CURRENT_STATUS.md`** — mark completed items and add notes.
+1. **Update relevant documentation** (including `docs/CURRENT_STATUS.md` and any other affected docs) **before each and every commit**. Keeping documentation in sync is a strict requirement before committing any changes.
 2. **Commit with a descriptive message** — format: `feat: <what was done>` or `fix: <what was fixed>`.
 3. **Do not break existing features** — if you change auth flow or navigation, verify the app still loads.
 
