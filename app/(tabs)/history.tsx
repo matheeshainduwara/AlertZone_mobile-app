@@ -215,6 +215,12 @@ function CalendarModal({ value, onChange, onClose, title }: CalendarProps) {
 // ─────────────────────────────────────────────
 function ReportDetailModal({ report, onClose }: { report: Report | null; onClose: () => void }) {
   const { colors } = useTheme();
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [report]);
+
   if (!report) return null;
   const cfg = STATUS_CONFIG[report.status] ?? STATUS_CONFIG.PENDING;
   const timelineIndex = TIMELINE_STATUSES.indexOf(report.status);
@@ -235,15 +241,57 @@ function ReportDetailModal({ report, onClose }: { report: Report | null; onClose
             </View>
           </View>
 
-          {/* Image */}
-          {report.imageUrls?.[0] && (
-            <View className="mx-5 mb-4 mt-4 rounded-2xl overflow-hidden" style={{ height: 180 }}>
-              <Image source={{ uri: report.imageUrls[0] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          {/* Image Carousel */}
+          {report.imageUrls && report.imageUrls.length > 0 && (
+            <View className="mx-5 mb-4 mt-4 rounded-2xl overflow-hidden" style={{ height: 180, position: 'relative' }}>
+              <Image
+                source={{ uri: report.imageUrls[activeImageIndex] }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+              {report.imageUrls.length > 1 && (
+                <>
+                  <View
+                    style={{
+                      position: 'absolute', bottom: 10, left: 0, right: 0,
+                      flexDirection: 'row', justifyContent: 'center', gap: 6,
+                    }}
+                  >
+                    {report.imageUrls.map((_, i) => (
+                      <Pressable key={i} onPress={() => setActiveImageIndex(i)}>
+                        <View
+                          style={{
+                            width: i === activeImageIndex ? 20 : 6,
+                            height: 6, borderRadius: 3,
+                            backgroundColor: i === activeImageIndex ? colors.primary : 'rgba(255,255,255,0.4)',
+                          }}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                  {activeImageIndex > 0 && (
+                    <Pressable
+                      onPress={() => setActiveImageIndex(activeImageIndex - 1)}
+                      style={{ position: 'absolute', left: 10, top: 74, backgroundColor: colors.modalBackdrop, borderRadius: 16, padding: 6 }}
+                    >
+                      <Ionicons name="chevron-back" size={20} color="white" />
+                    </Pressable>
+                  )}
+                  {activeImageIndex < report.imageUrls.length - 1 && (
+                    <Pressable
+                      onPress={() => setActiveImageIndex(activeImageIndex + 1)}
+                      style={{ position: 'absolute', right: 10, top: 74, backgroundColor: colors.modalBackdrop, borderRadius: 16, padding: 6 }}
+                    >
+                      <Ionicons name="chevron-forward" size={20} color="white" />
+                    </Pressable>
+                  )}
+                </>
+              )}
             </View>
           )}
 
           {/* Title + meta */}
-          <View className="px-5 mb-4" style={{ marginTop: report.imageUrls?.[0] ? 0 : 16 }}>
+          <View className="px-5 mb-4" style={{ marginTop: (report.imageUrls && report.imageUrls.length > 0) ? 0 : 16 }}>
             <Text style={{ color: colors.primary, fontSize: 11, fontWeight: '700', marginBottom: 4 }}>Ref: {report.id}</Text>
             <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700' }}>{report.title}</Text>
             <View className="flex-row items-center mt-2 gap-2">

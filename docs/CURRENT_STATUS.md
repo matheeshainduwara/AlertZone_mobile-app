@@ -1,7 +1,7 @@
 # Current Status — AlertZone Mobile App
 > **Full Log:** [PROJECT_PROGRESS.md](./PROJECT_PROGRESS.md)
 
-> **Last Updated:** 2026-06-07 (Subtle status bar gradient overlay, Rule of Hooks fix in report screen, Report Card Photo Thumbnails, Address Wrap, Details Category Removal, Nearby Issues Filters & Vertical List, Google Sign-in Cleanup, Caching, Preferences Sync, Biometrics, Upvote Constraints)
+> **Last Updated:** 2026-06-07 (Multi-image carousel in history/archive details, Subtle status bar gradient overlay, Rule of Hooks fix in report screen, Report Card Photo Thumbnails, Address Wrap, Details Category Removal, Nearby Issues Filters & Vertical List, Google Sign-in Cleanup, Caching, Preferences Sync, Biometrics, Upvote Constraints)
 >
 > This document tracks what is done, what is broken, and what remains. Agents MUST read this before starting work.
 
@@ -129,6 +129,7 @@
 - [x] View on Map — navigate to Map tab and center on report ✅
 - [x] Filters (All/Pending/Fixing/Resolved/Rejected) — filter real data ✅
 - [x] Report detail modal — shows real Firestore data ✅
+- [x] Multi-image support (interactive image carousel with dot navigation and back/forward chevrons) in history detail modal ✅
 - [x] Status timeline with ASSIGNED stage ✅
 - [x] Real-time updates — modal reflects status changes instantly ✅
 - [x] Human-readable date formatting ✅
@@ -143,6 +144,7 @@
 - [x] **Date filter chips** — All Time / Today / Last 7 Days / Last 30 Days / Custom Range ✅
 - [x] **Custom date range** — pure React Native calendar modal, no third-party date picker ✅
 - [x] Report detail modal with status timeline and resolution notes ✅
+- [x] Multi-image support (interactive image carousel with dot navigation and back/forward chevrons) in archive detail modal ✅
 - [x] Informative empty state explaining the auto-archive behaviour ✅
 
 ### Profile Screen (`profile.tsx`) ✅
