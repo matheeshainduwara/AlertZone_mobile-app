@@ -143,6 +143,7 @@
 ### Archive Screen (`archive.tsx`) ✅ NEW
 - [x] Live Firestore subscription filtered to `isArchived == true` for the current user ✅
 - [x] **Category filter chips** — All Categories + 6 specific categories ✅
+- [x] **Status filter chips** — All Statuses / Resolved / Rejected to filter archived reports ✅
 - [x] **Date filter chips** — All Time / Today / Last 7 Days / Last 30 Days / Custom Range ✅
 - [x] **Custom date range** — pure React Native calendar modal, no third-party date picker ✅
 - [x] Report detail modal with status timeline and resolution notes ✅

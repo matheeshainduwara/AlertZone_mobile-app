@@ -69,6 +69,14 @@ const CATEGORIES = [
   { id: 'other',             label: 'Other',              icon: 'help-circle-outline',   color: '#94A3B8' },
 ] as const;
 
+const STATUS_FILTERS = [
+  { id: 'all',      label: 'All Statuses' },
+  { id: 'resolved', label: 'Resolved' },
+  { id: 'rejected', label: 'Rejected' },
+] as const;
+
+type StatusFilterId = typeof STATUS_FILTERS[number]['id'];
+
 const DATE_FILTERS = [
   { id: 'all',    label: 'All Time' },
   { id: 'today',  label: 'Today' },
@@ -611,6 +619,7 @@ export default function ArchiveScreen() {
   const [reports, setReports] = useState<Report[]>([]);
   const [firestoreLoading, setFirestoreLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [activeStatusFilter, setActiveStatusFilter] = useState<StatusFilterId>('all');
   const [activeDateFilter, setActiveDateFilter] = useState<DateFilterId>('all');
   
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
@@ -654,6 +663,11 @@ export default function ArchiveScreen() {
     return unsub;
   }, [user]);
 
+  // ── Reset visible count when any filter changes ──
+  useEffect(() => {
+    setVisibleCount(INITIAL_PAGE_SIZE);
+  }, [activeCategory, activeStatusFilter, activeDateFilter, customStartDate, customEndDate]);
+
   const clearCustomRange = () => {
     setCustomStartDate(null);
     setCustomEndDate(null);
@@ -663,6 +677,14 @@ export default function ArchiveScreen() {
   const filtered = reports.filter((r) => {
     // 1. Category filter
     if (activeCategory !== 'all' && r.categoryId !== activeCategory) {
+      return false;
+    }
+
+    // 1b. Status filter
+    if (activeStatusFilter === 'resolved' && r.status !== 'RESOLVED') {
+      return false;
+    }
+    if (activeStatusFilter === 'rejected' && r.status !== 'REJECTED') {
       return false;
     }
 
@@ -758,6 +780,36 @@ export default function ArchiveScreen() {
                   />
                   <Text className="text-xs font-semibold" style={{ color: isActive ? '#F5F5F5' : colors.textSecondary }}>
                     {cat.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* ── Status Filters ── */}
+        <View className="mb-4">
+          <Text className="text-xs font-bold px-5 mb-2 uppercase tracking-wide" style={{ color: colors.textSecondary }}>Status</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          >
+            {STATUS_FILTERS.map((sf) => {
+              const isActive = activeStatusFilter === sf.id;
+              return (
+                <Pressable
+                  key={sf.id}
+                  onPress={() => setActiveStatusFilter(sf.id)}
+                  className="px-4 py-2 rounded-full"
+                  style={{
+                    backgroundColor: isActive ? colors.primary : colors.card,
+                    borderWidth: 1,
+                    borderColor: isActive ? colors.primary : colors.border,
+                  }}
+                >
+                  <Text className="text-xs font-semibold" style={{ color: isActive ? '#F5F5F5' : colors.textSecondary }}>
+                    {sf.label}
                   </Text>
                 </Pressable>
               );
