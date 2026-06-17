@@ -102,8 +102,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           // User explicitly chose a theme — honour it
           setThemeState(themeValue);
         } else {
-          // New user OR existing user who never manually toggled — follow system
-          setThemeState(systemColorScheme === 'dark' ? 'dark' : 'light');
+          // Default theme is light
+          setThemeState('light');
         }
       } catch (e) {
         console.error('Failed to load theme:', e);
