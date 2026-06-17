@@ -108,7 +108,21 @@ export const uploadFile = async (uri: string, path: string): Promise<string> => 
   try {
     const blob = await uriToBlob(uri);
     const storageRef = ref(storage, path);
-    await uploadBytes(storageRef, blob);
+    
+    // Auto-detect content type based on file path extension
+    let contentType = 'application/octet-stream';
+    const lowerPath = path.toLowerCase();
+    if (lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) {
+      contentType = 'image/jpeg';
+    } else if (lowerPath.endsWith('.png')) {
+      contentType = 'image/png';
+    } else if (lowerPath.endsWith('.mp4')) {
+      contentType = 'video/mp4';
+    } else if (lowerPath.endsWith('.mov')) {
+      contentType = 'video/quicktime';
+    }
+    
+    await uploadBytes(storageRef, blob, { contentType });
     return await getDownloadURL(storageRef);
   } catch (error) {
     console.error('❌ Upload error:', error);

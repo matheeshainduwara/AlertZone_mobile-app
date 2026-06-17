@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useRouter } from 'expo-router';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useScrollContext } from '../../config/tabBarScrollContext';
@@ -66,6 +67,7 @@ interface Report {
   // gamification flags — written by client to prevent double-awarding
   pointsAwarded?: boolean;
   resolvedCounted?: boolean;
+  videoUrl?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -219,6 +221,8 @@ function ReportDetailModal({ report, onClose, onArchive }: { report: Report | nu
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const imageScrollViewRef = useRef<ScrollView>(null);
   const [imageWidth, setImageWidth] = useState(0);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenVideo, setFullscreenVideo] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -270,12 +274,17 @@ function ReportDetailModal({ report, onClose, onArchive }: { report: Report | nu
                 scrollEventThrottle={16}
               >
                 {report.imageUrls.map((url, index) => (
-                  <View key={index} style={{ width: imageWidth, height: 180 }}>
-                    <Image
-                      source={{ uri: url }}
-                      style={{ width: '100%', height: '100%' }}
-                      resizeMode="cover"
-                    />
+                  <View key={index} style={{ width: imageWidth, height: 180, position: 'relative' }}>
+                    <Pressable onPress={() => setFullscreenImage(url)} style={{ width: '100%', height: '100%' }}>
+                      <Image
+                        source={{ uri: url }}
+                        style={{ width: '100%', height: '100%' }}
+                        resizeMode="cover"
+                      />
+                      <View style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 12, padding: 6 }}>
+                        <Ionicons name="expand" size={14} color="white" />
+                      </View>
+                    </Pressable>
                   </View>
                 ))}
               </ScrollView>
@@ -331,6 +340,20 @@ function ReportDetailModal({ report, onClose, onArchive }: { report: Report | nu
                   )}
                 </>
               )}
+            </View>
+          )}
+
+          {/* Video Evidence */}
+          {report.videoUrl && (
+            <View className="mx-5 mb-4 mt-2 rounded-2xl overflow-hidden border relative" style={{ height: 200, borderColor: colors.border }}>
+              <ReportVideoPlayer url={report.videoUrl} />
+              <Pressable
+                onPress={() => setFullscreenVideo(report.videoUrl)}
+                style={{ position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 16, padding: 8, zIndex: 10 }}
+                className="active:opacity-85"
+              >
+                <Ionicons name="expand" size={16} color="white" />
+              </Pressable>
             </View>
           )}
 
@@ -503,6 +526,42 @@ function ReportDetailModal({ report, onClose, onArchive }: { report: Report | nu
           </View>
 
         </ScrollView>
+
+        {/* Fullscreen Image Viewer Modal */}
+        {fullscreenImage && (
+          <Modal visible={!!fullscreenImage} transparent animationType="fade">
+            <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+              <Pressable
+                onPress={() => setFullscreenImage(null)}
+                style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)' }}
+              >
+                <Ionicons name="close" size={24} color="white" />
+              </Pressable>
+              <Image
+                source={{ uri: fullscreenImage }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+              />
+            </View>
+          </Modal>
+        )}
+
+        {/* Fullscreen Video Viewer Modal */}
+        {fullscreenVideo && (
+          <Modal visible={!!fullscreenVideo} transparent animationType="fade">
+            <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+              <Pressable
+                onPress={() => setFullscreenVideo(null)}
+                style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)' }}
+              >
+                <Ionicons name="close" size={24} color="white" />
+              </Pressable>
+              <View style={{ width: '90%', aspectRatio: 16/9 }}>
+                <ReportVideoPlayer url={fullscreenVideo} />
+              </View>
+            </View>
+          </Modal>
+        )}
       </View>
     </Modal>
   );
@@ -1231,3 +1290,19 @@ const styles = StyleSheet.create({
   },
   closeCalendarText: { color: '#6B7280', fontWeight: '600', fontSize: 14 },
 });
+
+function ReportVideoPlayer({ url }: { url: string }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.allowsFullscreen = true;
+    p.playsInline = true;
+  });
+
+  return (
+    <VideoView
+      style={{ width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' }}
+      player={player}
+      allowsFullscreen
+      allowsSourceChange
+    />
+  );
+}

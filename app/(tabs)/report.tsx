@@ -20,6 +20,7 @@ import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   addDoc,
   collection,
@@ -408,6 +409,8 @@ export default function ReportScreen() {
   const [images, setImages] = useState<string[]>([]);
   const [video, setVideo] = useState<string | null>(null);
   const [videoSize, setVideoSize] = useState<number | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
+  const [fullscreenVideo, setFullscreenVideo] = useState<string | null>(null);
   const [uploadStatusText, setUploadStatusText] = useState('Submitting Report');
   const [photoSourceModalVisible, setPhotoSourceModalVisible] = useState(false);
 
@@ -790,10 +793,10 @@ export default function ReportScreen() {
       return;
     }
 
-    if (images.length === 0) {
+    if (images.length === 0 && !video) {
       Alert.alert(
-        "No Images Added",
-        "Are you sure you want to submit this report without any photo evidence?",
+        "No Evidence Added",
+        "Are you sure you want to submit this report without any photo or video evidence?",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Submit Anyway", onPress: () => processSubmission() }
@@ -947,6 +950,8 @@ export default function ReportScreen() {
     setImages([]);
     setVideo(null);
     setVideoSize(null);
+    setFullscreenImage(null);
+    setFullscreenVideo(null);
     setSearchQuery('');
   };
 
@@ -963,7 +968,7 @@ export default function ReportScreen() {
     );
   }
 
-  const canSubmit = !!selectedCategory && description.trim().length > 10;
+  const canSubmit = !!selectedCategory && description.trim().length >= 10;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
@@ -1138,11 +1143,14 @@ export default function ReportScreen() {
             </View>
             <View className="flex-row gap-3">
               {images.map((uri, index) => (
-                <View key={index} className="w-[30%] aspect-square rounded-xl overflow-hidden border" style={{ borderColor: colors.border }}>
-                  <RNImage source={{ uri }} style={{ flex: 1 }} />
+                <View key={index} className="w-[30%] aspect-square rounded-xl overflow-hidden border relative" style={{ borderColor: colors.border }}>
+                  <Pressable onPress={() => setFullscreenImage(uri)} style={{ flex: 1 }}>
+                    <RNImage source={{ uri }} style={{ flex: 1 }} />
+                  </Pressable>
                   <Pressable
                     onPress={() => removeImage(index)}
                     className="absolute top-1 right-1 bg-black/50 rounded-full p-1"
+                    style={{ zIndex: 5 }}
                   >
                     <Ionicons name="close" size={14} color="white" />
                   </Pressable>
@@ -1170,14 +1178,19 @@ export default function ReportScreen() {
             </View>
             <View className="flex-row gap-3">
               {video ? (
-                <View className="w-[60%] aspect-[16/9] rounded-xl overflow-hidden border relative justify-center items-center bg-black/40" style={{ borderColor: colors.border }}>
-                  <Ionicons name="videocam" size={36} color={colors.primary} />
-                  <Text className="text-xs font-semibold mt-1" style={{ color: colors.text }}>
-                    {videoSize ? `${videoSize.toFixed(1)} MB` : 'Video Attached'}
-                  </Text>
+                <View className="w-[60%] aspect-[16/9] rounded-xl overflow-hidden border relative bg-black" style={{ borderColor: colors.border }}>
+                  <ReportVideoPlayer url={video} />
+                  <Pressable
+                    onPress={() => setFullscreenVideo(video)}
+                    style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 16, padding: 8, zIndex: 10 }}
+                    className="active:opacity-85"
+                  >
+                    <Ionicons name="expand" size={14} color="white" />
+                  </Pressable>
                   <Pressable
                     onPress={removeVideo}
                     className="absolute top-2 right-2 bg-black/50 rounded-full p-1.5 active:opacity-75"
+                    style={{ zIndex: 10 }}
                   >
                     <Ionicons name="close" size={16} color="white" />
                   </Pressable>
@@ -1273,6 +1286,58 @@ export default function ReportScreen() {
         onSelectCamera={handleCameraLaunch}
         onSelectGallery={handleGalleryLaunch}
       />
+
+      {/* Fullscreen Image Viewer Modal */}
+      {fullscreenImage && (
+        <Modal visible={!!fullscreenImage} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+            <Pressable
+              onPress={() => setFullscreenImage(null)}
+              style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)' }}
+            >
+              <Ionicons name="close" size={24} color="white" />
+            </Pressable>
+            <RNImage
+              source={{ uri: fullscreenImage }}
+              style={{ width: '100%', height: '100%' }}
+              resizeMode="contain"
+            />
+          </View>
+        </Modal>
+      )}
+
+      {/* Fullscreen Video Viewer Modal */}
+      {fullscreenVideo && (
+        <Modal visible={!!fullscreenVideo} transparent animationType="fade">
+          <View style={{ flex: 1, backgroundColor: 'black', justifyContent: 'center', alignItems: 'center' }}>
+            <Pressable
+              onPress={() => setFullscreenVideo(null)}
+              style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)' }}
+            >
+              <Ionicons name="close" size={24} color="white" />
+            </Pressable>
+            <View style={{ width: '90%', aspectRatio: 16/9 }}>
+              <ReportVideoPlayer url={fullscreenVideo} />
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
+  );
+}
+
+function ReportVideoPlayer({ url }: { url: string }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.allowsFullscreen = true;
+    p.playsInline = true;
+  });
+
+  return (
+    <VideoView
+      style={{ width: '100%', height: '100%', borderRadius: 16, overflow: 'hidden' }}
+      player={player}
+      allowsFullscreen
+      allowsSourceChange
+    />
   );
 }
