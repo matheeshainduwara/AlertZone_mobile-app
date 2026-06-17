@@ -34,7 +34,7 @@ import Toast from 'react-native-toast-message';
 
 import { useAuth } from '../../config/authConfig';
 import { db } from '../../services/firebase';
-import { compressImage, isUnderSizeLimit, uploadFile } from '../../services/storage.service';
+import { compressImage, isUnderSizeLimit, uploadFile, compressVideo, getFileSizeMb } from '../../services/storage.service';
 import BlurLoadingOverlay from '../../components/BlurLoadingOverlay';
 import PhotoSourceModal from '../../components/PhotoSourceModal';
 import { resolveSrilankaRegion, PROVINCE_CODES, DISTRICT_CODES } from '../../config/sriLankaRegions';
@@ -406,6 +406,8 @@ export default function ReportScreen() {
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [video, setVideo] = useState<string | null>(null);
+  const [videoSize, setVideoSize] = useState<number | null>(null);
   const [uploadStatusText, setUploadStatusText] = useState('Submitting Report');
   const [photoSourceModalVisible, setPhotoSourceModalVisible] = useState(false);
 
@@ -653,6 +655,111 @@ export default function ReportScreen() {
     setImages(newImages);
   };
 
+  const handleVideoPick = () => {
+    if (video) {
+      Toast.show({ type: 'info', text1: 'Limit reached', text2: 'You can only add 1 video.' });
+      return;
+    }
+    Alert.alert(
+      "Add Video Evidence",
+      "Choose a video source",
+      [
+        {
+          text: "Record Video",
+          onPress: handleCameraVideoLaunch
+        },
+        {
+          text: "Choose from Gallery",
+          onPress: handleGalleryVideoLaunch
+        },
+        {
+          text: "Cancel",
+          style: "cancel"
+        }
+      ]
+    );
+  };
+
+  const handleCameraVideoLaunch = async () => {
+    try {
+      const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!cameraPermission.granted) {
+        Toast.show({
+          type: 'error',
+          text1: 'Permission Denied',
+          text2: 'Camera access is required to record video.',
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        processPickedVideo(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.error('Camera video launch error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Camera Error',
+        text2: 'Could not open camera to record video.',
+      });
+    }
+  };
+
+  const handleGalleryVideoLaunch = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        processPickedVideo(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.error('Gallery video launch error:', e);
+      Toast.show({
+        type: 'error',
+        text1: 'Gallery Error',
+        text2: 'Could not open gallery.',
+      });
+    }
+  };
+
+  const processPickedVideo = async (uri: string) => {
+    const sizeMb = await getFileSizeMb(uri);
+    if (sizeMb === null) {
+      Toast.show({
+        type: 'error',
+        text1: 'Size check failed',
+        text2: 'Could not check the video size.',
+      });
+      return;
+    }
+
+    if (sizeMb > 50) {
+      Toast.show({
+        type: 'error',
+        text1: 'Video Too Large',
+        text2: `Maximum video size allowed is 50MB. Selected is ${sizeMb.toFixed(1)}MB.`,
+        visibilityTime: 5000,
+      });
+      return;
+    }
+
+    setVideo(uri);
+    setVideoSize(sizeMb);
+  };
+
+  const removeVideo = () => {
+    setVideo(null);
+    setVideoSize(null);
+  };
+
   // ── Submit to Firestore ──
   const handleSubmit = async () => {
     // Check validation first
@@ -719,6 +826,16 @@ export default function ReportScreen() {
         imageUrls.push(url);
       }
 
+      // 1b. Upload video if present
+      let uploadedVideoUrl = null;
+      if (video) {
+        setUploadStatusText('Compressing video evidence (this may take a moment)...');
+        const compressedVideoUri = await compressVideo(video);
+        setUploadStatusText('Uploading video evidence...');
+        const path = `reports/${user.uid}/${Date.now()}_video.mp4`;
+        uploadedVideoUrl = await uploadFile(compressedVideoUri, path);
+      }
+
       setUploadStatusText('Securing report details...');
 
       // Generate standardized daily custom ID
@@ -776,7 +893,7 @@ export default function ReportScreen() {
           localGovernmentArea: resolvedLGA,
         },
         imageUrls,
-        videoUrl: null,
+        videoUrl: uploadedVideoUrl,
         status: 'PENDING',
         assignedTo: null,
         resolutionNote: null,
@@ -828,6 +945,8 @@ export default function ReportScreen() {
     setSelectedCategory(null);
     setDescription('');
     setImages([]);
+    setVideo(null);
+    setVideoSize(null);
     setSearchQuery('');
   };
 
@@ -1041,6 +1160,40 @@ export default function ReportScreen() {
               )}
             </View>
             <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 8 }}>Max 3 images. Max 2MB per image. Auto-compression applied.</Text>
+          </View>
+
+          {/* ── 3b. Video ── */}
+          <View className="px-5 mb-5">
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="font-bold text-base" style={{ color: colors.text }}>Add Evidence (Video)</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{video ? '1/1' : '0/1'}</Text>
+            </View>
+            <View className="flex-row gap-3">
+              {video ? (
+                <View className="w-[60%] aspect-[16/9] rounded-xl overflow-hidden border relative justify-center items-center bg-black/40" style={{ borderColor: colors.border }}>
+                  <Ionicons name="videocam" size={36} color={colors.primary} />
+                  <Text className="text-xs font-semibold mt-1" style={{ color: colors.text }}>
+                    {videoSize ? `${videoSize.toFixed(1)} MB` : 'Video Attached'}
+                  </Text>
+                  <Pressable
+                    onPress={removeVideo}
+                    className="absolute top-2 right-2 bg-black/50 rounded-full p-1.5 active:opacity-75"
+                  >
+                    <Ionicons name="close" size={16} color="white" />
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={handleVideoPick}
+                  className="w-[30%] aspect-square rounded-xl items-center justify-center border-2 border-dashed active:opacity-70"
+                  style={{ backgroundColor: colors.card, borderColor: colors.border }}
+                >
+                  <Ionicons name="videocam-outline" size={24} color={colors.textSecondary} />
+                  <Text className="text-[10px] mt-1" style={{ color: colors.textSecondary }}>Add Video</Text>
+                </Pressable>
+              )}
+            </View>
+            <Text style={{ color: colors.textMuted, fontSize: 10, marginTop: 8 }}>Max 1 video. Max 50MB. Auto-compression applied.</Text>
           </View>
 
           {/* ── 4. Description ── */}

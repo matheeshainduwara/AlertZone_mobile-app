@@ -1,6 +1,7 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from './firebase';
 import * as ImageManipulator from 'expo-image-manipulator';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 /** Target size in MB we try to compress images down to */
 const COMPRESS_TARGET_MB = 2;
@@ -114,3 +115,35 @@ export const uploadFile = async (uri: string, path: string): Promise<string> => 
     throw error;
   }
 };
+
+/**
+ * Compresses a video as much as possible prior to uploading.
+ * @param uri Local URI of the video
+ * @returns The compressed video's local URI
+ */
+export const compressVideo = async (uri: string): Promise<string> => {
+  const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+  if (isExpoGo) {
+    console.log('⚠️ Running in Expo Go: Video compression skipped.');
+    return uri;
+  }
+
+  try {
+    console.log('📦 Compressing video:', uri);
+    const { Video } = require('react-native-compressor');
+    const compressedUri = await Video.compress(
+      uri,
+      {
+        compressionMethod: 'auto',
+      }
+    );
+    console.log('🗜️ Video compressed successfully:', compressedUri);
+    return compressedUri;
+  } catch (error) {
+    console.error('❌ Video compression error:', error);
+    // If compression fails, return the original video URI
+    return uri;
+  }
+};
+
