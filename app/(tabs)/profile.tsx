@@ -1697,6 +1697,7 @@ function LogoutModal({
   onConfirm: () => void;
   loggingOut: boolean;
 }) {
+  const { colors, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0.85)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -1744,38 +1745,38 @@ function LogoutModal({
     <Modal visible={visible} transparent animationType="none">
       {/* Backdrop */}
       <Animated.View
-        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, opacity: opacityAnim }}
+        style={{ flex: 1, backgroundColor: colors.modalBackdrop, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32, opacity: opacityAnim }}
       >
         {/* Card */}
         <Animated.View
           style={{
             width: '100%',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: colors.card,
             borderRadius: 24,
             padding: 28,
             alignItems: 'center',
             borderWidth: 1,
-            borderColor: '#E8E8E8',
+            borderColor: colors.border,
             transform: [{ scale: scaleAnim }],
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 12 },
-            shadowOpacity: 0.1,
+            shadowOpacity: isDark ? 0.3 : 0.1,
             shadowRadius: 24,
             elevation: 10,
           }}
         >
           {/* Icon */}
           <View className="w-16 h-16 rounded-full items-center justify-center mb-5"
-            style={{ backgroundColor: '#FEE2E2' }}
+            style={{ backgroundColor: colors.dangerBg }}
           >
-            <Ionicons name="log-out-outline" size={32} color="#DC2626" />
+            <Ionicons name="log-out-outline" size={32} color={colors.dangerText} />
           </View>
 
           {/* Text */}
-          <Text className="text-[#1A1A1A] text-xl font-bold text-center mb-2">
+          <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.text }}>
             Log Out?
           </Text>
-          <Text className="text-[#6B7280] text-sm text-center leading-5 mb-8">
+          <Text className="text-sm text-center leading-5 mb-8" style={{ color: colors.textSecondary }}>
             Are you sure you want to log out of your AlertZone account?
           </Text>
 
@@ -1784,7 +1785,7 @@ function LogoutModal({
             onPress={onConfirm}
             disabled={loggingOut}
             className="w-full py-4 rounded-2xl items-center mb-3 active:opacity-80"
-            style={{ backgroundColor: loggingOut ? 'rgba(220,38,38,0.4)' : '#DC2626' }}
+            style={{ backgroundColor: loggingOut ? (isDark ? 'rgba(239, 68, 68, 0.4)' : 'rgba(220, 38, 38, 0.4)') : colors.dangerText }}
           >
             {loggingOut ? (
               <ActivityIndicator color="white" />
@@ -1797,9 +1798,9 @@ function LogoutModal({
             onPress={handleCancel}
             disabled={loggingOut}
             className="w-full py-4 rounded-2xl items-center active:opacity-70"
-            style={{ borderWidth: 1, borderColor: '#E8E8E8' }}
+            style={{ borderWidth: 1, borderColor: colors.border }}
           >
-            <Text className="text-[#4A4A4A] font-semibold text-base">Cancel</Text>
+            <Text className="font-semibold text-base" style={{ color: colors.text }}>Cancel</Text>
           </Pressable>
         </Animated.View>
       </Animated.View>
@@ -2027,7 +2028,7 @@ export default function ProfileScreen() {
                 <Ionicons name={isDark ? "moon" : "sunny-outline"} size={18} color={colors.primary} />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-semibold" style={{ color: colors.text }}>Dark Theme</Text>
+                <Text className="text-sm font-semibold" style={{ color: colors.text }}>App Theme</Text>
                 <Text className="text-xs mt-0.5" style={{ color: colors.textMuted }}>Toggle app color mode</Text>
               </View>
               <Switch

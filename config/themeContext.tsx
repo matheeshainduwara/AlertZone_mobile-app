@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
+import { useColorScheme } from 'react-native';
 
 export type ThemeType = 'light' | 'dark';
 
@@ -82,19 +83,27 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const systemColorScheme = useColorScheme(); // 'dark' | 'light' | null
   const [theme, setThemeState] = useState<ThemeType>('light');
   const [loading, setLoading] = useState(true);
 
-  // Load theme from AsyncStorage on startup (default to 'light')
+  // Load theme on startup.
+  // Only respect a saved theme if the user explicitly set it (theme_user_set === 'true').
+  // Everyone else — including existing users who got 'light' as an old default — will
+  // follow the device system theme.
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        const savedTheme = await AsyncStorage.getItem('app_theme');
-        if (savedTheme === 'dark' || savedTheme === 'light') {
-          setThemeState(savedTheme);
+        const [savedTheme, userSet] = await AsyncStorage.multiGet(['app_theme', 'theme_user_set']);
+        const themeValue = savedTheme[1];   // 'light' | 'dark' | null
+        const userSetFlag = userSet[1];     // 'true' | null
+
+        if (userSetFlag === 'true' && (themeValue === 'dark' || themeValue === 'light')) {
+          // User explicitly chose a theme — honour it
+          setThemeState(themeValue);
         } else {
-          // Default to light for 1st time install
-          setThemeState('light');
+          // New user OR existing user who never manually toggled — follow system
+          setThemeState(systemColorScheme === 'dark' ? 'dark' : 'light');
         }
       } catch (e) {
         console.error('Failed to load theme:', e);
@@ -108,7 +117,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const setTheme = async (newTheme: ThemeType) => {
     setThemeState(newTheme);
     try {
-      await AsyncStorage.setItem('app_theme', newTheme);
+      // Save both the chosen theme AND the explicit-set flag
+      await AsyncStorage.multiSet([
+        ['app_theme', newTheme],
+        ['theme_user_set', 'true'],
+      ]);
     } catch (e) {
       console.error('Failed to save theme:', e);
     }
